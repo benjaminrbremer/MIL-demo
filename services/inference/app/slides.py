@@ -64,8 +64,6 @@ def list_slides(request: Request) -> list[Slide]:
     return [_to_slide(row) for row in db.list_slides(request.app.state.db_path)]
 
 
-# Roadmap item 4: register the `.dzi` and tile routes before this one, or
-# "/v1/slides/<id>.dzi" will match here with slide_id="<id>.dzi".
 @router.get("/slides/{slide_id}")
 def get_slide(slide_id: str, request: Request) -> Slide:
     """One slide by ID; 404 NOT_FOUND if unknown."""

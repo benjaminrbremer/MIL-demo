@@ -21,7 +21,7 @@ project's own license file before marking "Verified".
 | Pydantic | 2.13.5 | inference | MIT | [ ] | pydantic.dev | Response models and request validation |
 | Uvicorn | 0.54.0 | inference | BSD-3-Clause | [ ] | uvicorn.org | ASGI server |
 | NumPy | TBD | inference | BSD-3-Clause | [ ] | numpy.org | Array math (attention, metrics) |
-| Pillow | 12.3.0 | inference | MIT-CMU (HPND) | [ ] | python-pillow.org | Image objects returned by openslide-python; heatmap PNG encoding |
+| Pillow | 12.3.0 | inference | MIT-CMU (HPND) | [ ] | python-pillow.org | Image objects returned by openslide-python; JPEG tile encoding; heatmap PNG encoding |
 | Express | TBD | web | MIT | [ ] | expressjs.com | HTTP server and routing |
 | OpenSeadragon | TBD | web | BSD-3-Clause | [ ] | openseadragon.github.io | Deep Zoom slide viewer |
 | Node.js runtime | TBD | web | MIT | [ ] | nodejs.org | JavaScript runtime |

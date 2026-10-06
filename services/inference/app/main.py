@@ -23,6 +23,8 @@ from app.errors import register_exception_handlers
 from app.health import router as health_router
 from app.registry import Registry
 from app.slides import router as slides_router
+from app.tiles import DeepZoomCache
+from app.tiles import router as tiles_router
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +78,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     registry.start()
     yield
     registry.stop()
+    app.state.tile_cache.close_all()
     logger.info("Inference service stopping")
 
 
@@ -96,8 +99,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     app.state.db_path = settings.data_dir / DB_FILENAME
+    app.state.tile_cache = DeepZoomCache()
     app.add_middleware(DeviceTokenMiddleware, token=settings.device_token)
     register_exception_handlers(app)
     app.include_router(health_router)
+    # Order matters: Starlette tries routes in registration order, and
+    # GET /v1/slides/{slide_id} would also match "/v1/slides/<id>.dzi"
+    # (with slide_id="<id>.dzi"). The tile routes must come first.
+    app.include_router(tiles_router)
     app.include_router(slides_router)
     return app

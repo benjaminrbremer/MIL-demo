@@ -28,6 +28,7 @@ class ErrorCode(StrEnum):
     NOT_FOUND = "NOT_FOUND"
     METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED"
     VALIDATION_ERROR = "VALIDATION_ERROR"
+    SLIDE_NOT_READY = "SLIDE_NOT_READY"
     INTERNAL_ERROR = "INTERNAL_ERROR"
 
 
@@ -38,6 +39,21 @@ _STATUS_CODES = {
 }
 
 INTERNAL_ERROR_MESSAGE = "Internal server error"
+
+
+class ApiError(Exception):
+    """A request failure with its own status code and error code."""
+
+    # HTTPException carries only a status, which _STATUS_CODES maps to one
+    # code. Raise this when the code isn't implied by the status, e.g. a 409
+    # that must say SLIDE_NOT_READY rather than fall back to BAD_REQUEST.
+
+    def __init__(self, status_code: int, code: ErrorCode, message: str) -> None:
+        """Store the status, code, and client-safe message."""
+        super().__init__(message)
+        self.status_code = status_code
+        self.code = code
+        self.message = message
 
 
 def error_body(code: ErrorCode, message: str) -> dict:
@@ -65,6 +81,11 @@ async def _http_exception_handler(
         content=error_body(code, message),
         headers=exc.headers,
     )
+
+
+async def _api_error_handler(request: Request, exc: ApiError) -> JSONResponse:
+    """Convert an ApiError to its status and contract-shaped body."""
+    return error_response(exc.status_code, exc.code, exc.message)
 
 
 async def _validation_exception_handler(
@@ -95,5 +116,6 @@ async def _unhandled_exception_handler(
 def register_exception_handlers(app: FastAPI) -> None:
     """Install the contract-shaped exception handlers on the app."""
     app.add_exception_handler(StarletteHTTPException, _http_exception_handler)
+    app.add_exception_handler(ApiError, _api_error_handler)
     app.add_exception_handler(RequestValidationError, _validation_exception_handler)
     app.add_exception_handler(Exception, _unhandled_exception_handler)

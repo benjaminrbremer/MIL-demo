@@ -22,7 +22,7 @@ Each numbered item is one feature branch, squash-merged into `main`.
   registering; UUID slide IDs; SHA-256 stored; allowlisted metadata;
   `unreadable` status on OpenSlide failure; `GET /v1/slides`,
   `GET /v1/slides/{id}`. REQ-001 to REQ-006.
-- [ ] **4. `feat(inference): serve Deep Zoom tiles`**
+- [x] **4. `feat(inference): serve Deep Zoom tiles`**
   `.dzi` descriptor and tile endpoints for ready slides. REQ-007.
 - [ ] **5. `feat(inference): add SQLite job store and single-worker queue`**
   Schema from `docs/api-contract.md`; FIFO queue; one worker thread;

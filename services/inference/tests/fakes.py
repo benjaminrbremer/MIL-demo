@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import ClassVar, Self
 
 import openslide
+from PIL import Image
 
 # A filename that looks like PHI, so a leak is easy to spot.
 PHI_NAME = "DOE-JOHN-1970-01-01.tif"
@@ -58,3 +59,28 @@ def phi_opener(path: str):
     if Path(path).name == PHI_NAME:
         return FakeSlide(path)
     return openslide.OpenSlide(path)
+
+
+# Width and height of the in-memory slide used by the tile tests.
+IMAGE_SLIDE_SIZE = (1000, 600)
+
+
+class FakeImageSlide(openslide.ImageSlide):
+    """A real in-memory slide for Deep Zoom; fails loudly if associated images are read."""
+
+    def __init__(self, path: str) -> None:
+        """Ignore the path and wrap a solid-colour Pillow image."""
+        super().__init__(Image.new("RGB", IMAGE_SLIDE_SIZE, (200, 120, 160)))
+
+    @property
+    def associated_images(self) -> dict:
+        """Raise; tile serving must never read associated images."""
+        raise AssertionError("associated images must never be read")
+
+
+class FakeBrokenImageSlide(FakeImageSlide):
+    """A slide that opens but fails every pixel read, with a path in the error."""
+
+    def read_region(self, location, level, size):
+        """Fail like OpenSlide does on a corrupt region, path included."""
+        raise openslide.OpenSlideError(f"Read error in /acq/{PHI_NAME}")

@@ -56,6 +56,20 @@ land, `models` is `[]` and `queue` is always zero.
 Only these fields are served (allowlist). No filenames, paths, associated
 images, or raw property dumps. `mpp_x`/`mpp_y` may be `null`.
 
+### Deep Zoom: `GET /v1/slides/{id}.dzi` and tiles
+- `.dzi` returns `application/xml`: the Deep Zoom descriptor with
+  `TileSize="254"`, `Overlap="1"`, `Format="jpeg"`, and the level-0 width
+  and height (bounds are not trimmed, so heatmap coordinates line up).
+- `{id}_files/{level}/{col}_{row}.jpeg` returns `image/jpeg`, at most
+  256 x 256 px (254 plus 1 px overlap on each inner edge), with
+  `Cache-Control: private, max-age=3600`.
+- `404 NOT_FOUND`: unknown slide, or a level, column, or row outside the
+  pyramid (including non-numeric segments).
+- `409 SLIDE_NOT_READY`: the slide's status is not `ready`.
+- `409 SLIDE_UNREADABLE`: the slide is `ready` but its file can no longer
+  be opened or read (for example, it was removed; the row is unchanged,
+  D-029).
+
 ### `POST /v1/jobs`
 - `202` with the job object (status `queued`)
 - `404` unknown slide; `409` slide not `ready`
@@ -109,7 +123,7 @@ The stream closes after `completed` or `failed`.
 | Code | Where | Meaning | How to trigger on purpose |
 |---|---|---|---|
 | `DEVICE_OFFLINE` | Web only | Node cannot reach the inference service | Stop the Python service |
-| `SLIDE_UNREADABLE` | Slide status / job | OpenSlide cannot open the file | Drop a renamed text file in the folder |
+| `SLIDE_UNREADABLE` | Slide status / tiles / job | OpenSlide cannot open the file | Drop a renamed text file in the folder |
 | `NO_TISSUE` | Job | Segmentation found no usable tissue | Blank or background-only image |
 | `INTERRUPTED` | Job | Service restarted while job was queued or running | Restart the service mid-job |
 | `INFERENCE_FAILED` | Job | Any other pipeline failure, including GPU OOM | (catch-all) |
@@ -125,6 +139,7 @@ job failures. A `500` never includes exception text.
 | `NOT_FOUND` | 404 | Unknown path or resource |
 | `METHOD_NOT_ALLOWED` | 405 | Path exists, method does not |
 | `VALIDATION_ERROR` | 422 | Request body or query failed validation |
+| `SLIDE_NOT_READY` | 409 | The slide exists but its status is not `ready` (tiles; job creation from item 5) |
 | `INTERNAL_ERROR` | 500 | Unhandled server error |
 
 ## SQLite schema
