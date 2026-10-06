@@ -1,0 +1,53 @@
+# CLAUDE.md - inference service
+
+## Role
+The "device." Runs on the desktop (WSL2, RTX 3090). Owns slide files, model
+weights, the feature cache, and all job state. Nothing else touches these.
+
+## Commands
+- Install / sync: `uv sync`
+- Run (local only): `uv run uvicorn app.main:app --host 127.0.0.1 --port 8000`
+- Run (reachable over Tailscale): bind `--host` to the Tailscale IP, never
+  `0.0.0.0` on an untrusted network
+- Tests: `uv run pytest`
+
+## Suggested layout
+```
+app/
+  main.py          FastAPI app; lifespan loads + verifies models, starts
+                   registry poller and job worker
+  config.py        settings from environment (.env); see .env.example
+  db.py            sqlite3 access; schema in docs/api-contract.md
+  registry.py      acquisition-folder polling, size-stability check,
+                   hashing, PHI-safe metadata extraction
+  tiles.py         Deep Zoom tile serving (OpenSlide DeepZoomGenerator)
+  jobs.py          FIFO queue, single GPU worker thread, progress pub/sub
+  pipeline/
+    segment.py     tissue segmentation
+    patch.py       patch coordinates
+    features.py    patch encoder (feature extraction)
+    mil.py         MIL aggregation; returns probabilities + attention
+    heatmap.py     percentile-normalized attention -> PNG
+    quality.py     tissue area / fraction, patch count, uncertainty flag
+  errors.py        error codes (see docs/api-contract.md)
+models/
+  manifest.json    model names, versions, sources, SHA-256 hashes
+tests/
+```
+
+## Rules
+- Load models once at startup. Verify file hashes against
+  `models/manifest.json`; refuse to start on mismatch (REQ-016).
+- GPU work runs in ONE background worker thread. Never block the asyncio
+  event loop with slide reading or inference.
+- Throttle SQLite progress writes (at most about once per second); publish
+  finer-grained progress in memory for the SSE stream.
+- On startup, mark any job left `running` or `queued` as failed with
+  `INTERRUPTED` (REQ-009). No automatic retries anywhere (REQ-017).
+- PHI: never call or expose `associated_images`; build slide metadata from
+  an explicit allowlist; never log file paths or original filenames.
+- Every endpoint except `/v1/health` requires the `X-Device-Token` header.
+- No network calls during inference. Weights are loaded from local disk.
+- Use the `logging` module, not print. Include job ID and slide ID in log
+  lines.
+- Read `docs/spike-findings.md` before touching `pipeline/`.
