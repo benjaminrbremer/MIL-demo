@@ -11,7 +11,7 @@ Timestamps are ISO 8601 UTC. Errors use the shape
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/v1/health` | Service status, GPU, model versions, queue depth |
-| GET | `/v1/slides` | All slides on the device |
+| GET | `/v1/slides` | All slides on the device (JSON array, newest first) |
 | GET | `/v1/slides/{id}` | One slide |
 | GET | `/v1/slides/{id}.dzi` | Deep Zoom descriptor (ready slides only) |
 | GET | `/v1/slides/{id}_files/{level}/{col}_{row}.jpeg` | Deep Zoom tile |

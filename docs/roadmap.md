@@ -11,13 +11,13 @@ Each numbered item is one feature branch, squash-merged into `main`.
       question in `docs/spike-findings.md`.
 
 ## Day 1 - inference service
-- [ ] **1. `chore(repo): initialize repository`**
+- [x] **1. `chore(repo): initialize repository`**
   README, LICENSE (MIT), `.gitignore`, `docs/` set, CLAUDE.md files,
   `.claude/commands/`.
 - [x] **2. `feat(inference): scaffold FastAPI service with health endpoint`**
   `uv` project, config from `.env`, `/v1/health` (GPU info, versions),
   token check middleware, `.env.example`. REQ-018.
-- [ ] **3. `feat(inference): add slide registry with folder polling and PHI-safe metadata`**
+- [x] **3. `feat(inference): add slide registry with folder polling and PHI-safe metadata`**
   Poll acquisition folder every 2 s; size-stability check before
   registering; UUID slide IDs; SHA-256 stored; allowlisted metadata;
   `unreadable` status on OpenSlide failure; `GET /v1/slides`,

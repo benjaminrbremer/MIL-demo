@@ -5,6 +5,8 @@ description = "Device-style WSI analysis service: slide registry, tiles, MIL job
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.142.2",
+    "openslide-bin>=4.0.1.2",
+    "openslide-python>=1.4.6",
     "uvicorn>=0.54.0",
 ]
 

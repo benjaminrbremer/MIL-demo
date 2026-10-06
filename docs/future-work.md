@@ -20,3 +20,6 @@ Out of scope for v0.1. Listed so the boundaries are explicit.
 - **Cloud sync stub**: push completed results to a "cloud" endpoint to
   mirror a device-plus-cloud split.
 - **Job cancellation.**
+- **Registry change detection**: notice slide files that are removed or
+  replaced after registration (see D-029).
+- **Multi-file slide formats** such as `.mrxs` (excluded by D-026).

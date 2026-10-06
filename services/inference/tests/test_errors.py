@@ -1,3 +1,5 @@
+import logging
+
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
@@ -64,3 +66,19 @@ def test_error_codes_match_contract():
     # Pipeline codes from docs/api-contract.md must exist verbatim.
     for code in ("SLIDE_UNREADABLE", "NO_TISSUE", "INTERRUPTED", "INFERENCE_FAILED"):
         assert ErrorCode(code).value == code
+
+
+def test_req_006_uvicorn_error_log_has_no_exception_text(client, caplog):
+    """REQ-006: uvicorn's unhandled-exception log keeps the type, not the text."""
+    secret_path = FAKE_PATH
+    try:
+        raise ValueError(f"cannot open {secret_path}")
+    except ValueError as exc:
+        # This is the call uvicorn makes after Starlette re-raises an error.
+        logging.getLogger("uvicorn.error").error(
+            "Exception in ASGI application\n", exc_info=exc
+        )
+
+    assert secret_path not in caplog.text
+    assert "Traceback" not in caplog.text
+    assert "Exception in ASGI application (ValueError)" in caplog.text

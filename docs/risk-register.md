@@ -15,3 +15,6 @@ Severity: 1 (negligible) to 4 (serious). Likelihood: 1 (rare) to 4 (likely).
   prevent them from being exposed (REQ-004 to REQ-006).
 - The model was trained on H&E lymph-node slides; other inputs produce
   meaningless output with no input-type check.
+- Slide files removed from, or replaced in, the acquisition folder after
+  registration are not detected; the slide stays listed with its original
+  metadata and hash (D-029).

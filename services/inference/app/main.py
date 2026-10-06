@@ -18,12 +18,29 @@ from fastapi import FastAPI
 from app import __version__
 from app.auth import DeviceTokenMiddleware
 from app.config import Settings
+from app.db import DB_FILENAME, init_db
 from app.errors import register_exception_handlers
 from app.health import router as health_router
+from app.registry import Registry
+from app.slides import router as slides_router
 
 logger = logging.getLogger(__name__)
 
 _LOG_HANDLER_NAME = "mil-inference"
+
+
+class ExceptionTextFilter(logging.Filter):
+    """Replace a record's traceback and exception text with the exception type."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Rewrite records that carry exception info; never drop a record."""
+        if record.exc_info and record.exc_info[1] is not None:
+            exc_type = type(record.exc_info[1]).__name__
+            record.msg = f"{record.getMessage().rstrip()} ({exc_type})"
+            record.args = ()
+            record.exc_info = None
+            record.exc_text = None
+        return True
 
 
 def configure_logging(level: str) -> None:
@@ -41,15 +58,24 @@ def configure_logging(level: str) -> None:
     formatter.converter = time.gmtime  # UTC timestamps
     handler.setFormatter(formatter)
     root.addHandler(handler)
+    # After an unhandled exception, Starlette re-raises it to uvicorn, which
+    # logs the full traceback on "uvicorn.error". Exception text can contain
+    # file paths (REQ-006), so that logger keeps only the exception type.
+    logging.getLogger("uvicorn.error").addFilter(ExceptionTextFilter())
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Run startup work before serving requests and shutdown work after."""
-    # Later items start the registry poller (3), job worker (5), and load
-    # and verify models (6) here.
+    # Later items start the job worker (5) and load and verify models (6)
+    # here.
     logger.info("Inference service %s starting", __version__)
+    settings: Settings = app.state.settings
+    init_db(app.state.db_path)
+    registry = Registry(settings.acquisition_dir, app.state.db_path)
+    registry.start()
     yield
+    registry.stop()
     logger.info("Inference service stopping")
 
 
@@ -69,7 +95,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = settings
+    app.state.db_path = settings.data_dir / DB_FILENAME
     app.add_middleware(DeviceTokenMiddleware, token=settings.device_token)
     register_exception_handlers(app)
     app.include_router(health_router)
+    app.include_router(slides_router)
     return app

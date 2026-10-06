@@ -6,7 +6,8 @@ weights, the feature cache, and all job state. Nothing else touches these.
 
 ## Commands
 - Install / sync: `uv sync`
-- Config: `cp .env.example .env` and set `DEVICE_TOKEN`
+- Config: `cp .env.example .env` and set `DEVICE_TOKEN`, `ACQUISITION_DIR`,
+  `DATA_DIR`
 - Run (local only):
   `uv run --env-file .env uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000`
 - Run (reachable over Tailscale): bind `--host` to the Tailscale IP, never

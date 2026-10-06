@@ -14,14 +14,14 @@ project's own license file before marking "Verified".
 | PyTorch | TBD | inference | BSD-3-Clause | [ ] | pytorch.org | Tensor computation and GPU inference |
 | CUDA toolkit / driver | TBD | inference | NVIDIA EULA | [ ] | nvidia.com | GPU execution |
 | wsinfer-mil | TBD | inference | Apache-2.0 | [ ] | github.com/SBU-BMI/wsinfer-mil | Pipeline components and model loading |
-| OpenSlide (C library) | TBD | inference | LGPL-2.1 | [ ] | openslide.org | Reading pyramidal WSI files |
-| openslide-python | TBD | inference | LGPL-2.1 | [ ] | openslide.org | Python bindings, Deep Zoom generator |
+| OpenSlide (C library, via openslide-bin) | 4.0.1 (openslide-bin 4.0.1.2) | inference | LGPL-2.1 | [ ] | openslide.org | Reading pyramidal WSI files: dimensions, levels, microns per pixel |
+| openslide-python | 1.4.6 | inference | LGPL-2.1 | [ ] | openslide.org | Python bindings, Deep Zoom generator |
 | FastAPI | 0.142.2 | inference | MIT | [ ] | fastapi.tiangolo.com | HTTP API |
 | Starlette | 1.7.0 | inference | BSD-3-Clause | [ ] | starlette.dev | ASGI toolkit under FastAPI; we import its exception and middleware types directly |
 | Pydantic | 2.13.5 | inference | MIT | [ ] | pydantic.dev | Response models and request validation |
 | Uvicorn | 0.54.0 | inference | BSD-3-Clause | [ ] | uvicorn.org | ASGI server |
 | NumPy | TBD | inference | BSD-3-Clause | [ ] | numpy.org | Array math (attention, metrics) |
-| Pillow | TBD | inference | MIT-CMU (HPND) | [ ] | python-pillow.org | Heatmap PNG encoding |
+| Pillow | 12.3.0 | inference | MIT-CMU (HPND) | [ ] | python-pillow.org | Image objects returned by openslide-python; heatmap PNG encoding |
 | Express | TBD | web | MIT | [ ] | expressjs.com | HTTP server and routing |
 | OpenSeadragon | TBD | web | BSD-3-Clause | [ ] | openseadragon.github.io | Deep Zoom slide viewer |
 | Node.js runtime | TBD | web | MIT | [ ] | nodejs.org | JavaScript runtime |

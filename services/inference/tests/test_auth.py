@@ -1,6 +1,6 @@
 import pytest
 
-# No route exists at this path yet; it stands in for any protected endpoint.
+# Stands in for any protected endpoint.
 PROTECTED_PATH = "/v1/slides"
 
 
@@ -32,12 +32,10 @@ def test_req_019_wrong_token_rejected(client, token):
 
 
 def test_req_019_valid_token_passes(client, auth_headers):
-    """REQ-019: a request with the right token reaches the router."""
-    # Getting the router's 404 (not 401) proves the request passed the token
-    # check.
+    """REQ-019: a request with the right token reaches the route."""
     response = client.get(PROTECTED_PATH, headers=auth_headers)
 
-    assert_error(response, 404, "NOT_FOUND")
+    assert response.status_code == 200
 
 
 def test_req_019_rejection_does_not_echo_or_log_token(client, caplog):

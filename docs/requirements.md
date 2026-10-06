@@ -8,12 +8,12 @@ tests are written (roadmap item 12).
 
 | ID | Requirement | Verified by |
 |---|---|---|
-| REQ-001 | The service shall detect new slide files in the acquisition folder and register them without user action. | |
-| REQ-002 | The service shall not register a slide until its file size has been unchanged for at least 5 seconds. | |
-| REQ-003 | The service shall assign each slide a UUID and store the SHA-256 of its contents. | |
-| REQ-004 | The service shall not read or serve slide associated images (label, macro). | |
-| REQ-005 | The service shall serve only allowlisted slide metadata (dimensions, level count, microns per pixel). | |
-| REQ-006 | The service shall not include original filenames or file paths in API responses or logs. | |
+| REQ-001 | The service shall detect new slide files in the acquisition folder and register them without user action. | `tests/test_registry.py::test_req_001_*` |
+| REQ-002 | The service shall not register a slide until its file size has been unchanged for at least 5 seconds. | `tests/test_registry.py::test_req_002_*` |
+| REQ-003 | The service shall assign each slide a UUID and store the SHA-256 of its contents. | `tests/test_registry.py::test_req_003_*` |
+| REQ-004 | The service shall not read or serve slide associated images (label, macro). | `tests/test_registry.py::test_req_004_*` |
+| REQ-005 | The service shall serve only allowlisted slide metadata (dimensions, level count, microns per pixel). | `tests/test_registry.py::test_req_005_*`, `tests/test_slides.py::test_req_005_*` |
+| REQ-006 | The service shall not include original filenames or file paths in API responses or logs. | `tests/test_registry.py::test_req_006_*`, `tests/test_slides.py::test_req_006_*`, `tests/test_errors.py::test_req_006_*` |
 | REQ-007 | The service shall serve ready slides as Deep Zoom tiles. | |
 | REQ-008 | The service shall run at most one analysis job at a time and queue others in FIFO order. | |
 | REQ-009 | The service shall persist job state in SQLite and, on startup, mark jobs left queued or running as failed with `INTERRUPTED`. | |

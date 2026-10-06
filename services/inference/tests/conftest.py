@@ -8,9 +8,15 @@ TEST_TOKEN = "test-token-0123456789abcdefghijklmnop"
 
 
 @pytest.fixture
-def settings() -> Settings:
-    """Settings with a valid test token."""
-    return Settings(device_token=TEST_TOKEN)
+def settings(tmp_path) -> Settings:
+    """Settings with a valid test token and empty temporary directories."""
+    acquisition_dir = tmp_path / "acquisition"
+    acquisition_dir.mkdir()
+    return Settings(
+        device_token=TEST_TOKEN,
+        acquisition_dir=acquisition_dir,
+        data_dir=tmp_path / "data",
+    )
 
 
 @pytest.fixture
