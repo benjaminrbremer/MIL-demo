@@ -25,7 +25,8 @@ tests are written (roadmap item 12).
 | REQ-015 | The service shall record model names, versions, hashes, and per-stage timings with every completed job. | |
 | REQ-016 | The service shall verify model file hashes at startup and refuse to start on mismatch. | |
 | REQ-017 | The service shall fail jobs with one of the defined error codes and shall not retry automatically. | |
-| REQ-018 | The service shall expose a health endpoint reporting GPU availability, model versions, and queue depth. | |
+| REQ-018 | The service shall expose a health endpoint reporting GPU availability, model versions, and queue depth. | `tests/test_health.py::test_req_018_*` |
+| REQ-019 | The service shall reject every request other than `GET /v1/health` that lacks a valid `X-Device-Token` header. | `tests/test_auth.py::test_req_019_*` |
 
 ## Web app
 

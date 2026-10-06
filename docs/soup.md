@@ -16,17 +16,29 @@ project's own license file before marking "Verified".
 | wsinfer-mil | TBD | inference | Apache-2.0 | [ ] | github.com/SBU-BMI/wsinfer-mil | Pipeline components and model loading |
 | OpenSlide (C library) | TBD | inference | LGPL-2.1 | [ ] | openslide.org | Reading pyramidal WSI files |
 | openslide-python | TBD | inference | LGPL-2.1 | [ ] | openslide.org | Python bindings, Deep Zoom generator |
-| FastAPI | TBD | inference | MIT | [ ] | fastapi.tiangolo.com | HTTP API |
-| Uvicorn | TBD | inference | BSD-3-Clause | [ ] | uvicorn.org | ASGI server |
+| FastAPI | 0.142.2 | inference | MIT | [ ] | fastapi.tiangolo.com | HTTP API |
+| Starlette | 1.7.0 | inference | BSD-3-Clause | [ ] | starlette.dev | ASGI toolkit under FastAPI; we import its exception and middleware types directly |
+| Pydantic | 2.13.5 | inference | MIT | [ ] | pydantic.dev | Response models and request validation |
+| Uvicorn | 0.54.0 | inference | BSD-3-Clause | [ ] | uvicorn.org | ASGI server |
 | NumPy | TBD | inference | BSD-3-Clause | [ ] | numpy.org | Array math (attention, metrics) |
 | Pillow | TBD | inference | MIT-CMU (HPND) | [ ] | python-pillow.org | Heatmap PNG encoding |
 | Express | TBD | web | MIT | [ ] | expressjs.com | HTTP server and routing |
 | OpenSeadragon | TBD | web | BSD-3-Clause | [ ] | openseadragon.github.io | Deep Zoom slide viewer |
 | Node.js runtime | TBD | web | MIT | [ ] | nodejs.org | JavaScript runtime |
-| Python runtime | TBD | inference | PSF | [ ] | python.org | Python runtime |
+| Python runtime | 3.12 (3.12.12 on dev Mac) | inference | PSF | [ ] | python.org | Python runtime |
 
 Add any transitive dependency that directly affects results (for example,
 the patch encoder's model-definition library) as it is identified.
+
+## Development tools (not shipped)
+Used to build and test the inference service; not loaded at runtime.
+
+| Component | Version | Used by | License (expected) | Verified | Source | Function we rely on |
+|---|---|---|---|---|---|---|
+| uv | 0.9.7 | inference | MIT / Apache-2.0 | [ ] | docs.astral.sh/uv | Python and dependency management, lockfile |
+| pytest | 9.1.1 | inference | MIT | [ ] | pytest.org | Test runner |
+| httpx | 0.28.1 | inference | BSD-3-Clause | [ ] | python-httpx.org | HTTP client behind FastAPI's TestClient |
+| Ruff | 0.16.10 | inference | MIT | [ ] | docs.astral.sh/ruff | Formatting and linting |
 
 ## Models and data
 

@@ -44,6 +44,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Personal study notes (interview prep), never committed
+docs/study/
+
 # Claude Code personal overrides
 CLAUDE.local.md
 .claude/settings.local.json

@@ -14,7 +14,7 @@ Each numbered item is one feature branch, squash-merged into `main`.
 - [ ] **1. `chore(repo): initialize repository`**
   README, LICENSE (MIT), `.gitignore`, `docs/` set, CLAUDE.md files,
   `.claude/commands/`.
-- [ ] **2. `feat(inference): scaffold FastAPI service with health endpoint`**
+- [x] **2. `feat(inference): scaffold FastAPI service with health endpoint`**
   `uv` project, config from `.env`, `/v1/health` (GPU info, versions),
   token check middleware, `.env.example`. REQ-018.
 - [ ] **3. `feat(inference): add slide registry with folder polling and PHI-safe metadata`**

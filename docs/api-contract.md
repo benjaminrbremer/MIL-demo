@@ -35,6 +35,8 @@ Timestamps are ISO 8601 UTC. Errors use the shape
   "queue": {"running": 0, "queued": 0}
 }
 ```
+`gpu.name` is `null` when no GPU is available. Until roadmap items 6 and 5
+land, `models` is `[]` and `queue` is always zero.
 
 ### Slide object
 ```json
@@ -111,6 +113,19 @@ The stream closes after `completed` or `failed`.
 | `NO_TISSUE` | Job | Segmentation found no usable tissue | Blank or background-only image |
 | `INTERRUPTED` | Job | Service restarted while job was queued or running | Restart the service mid-job |
 | `INFERENCE_FAILED` | Job | Any other pipeline failure, including GPU OOM | (catch-all) |
+
+### HTTP-level codes
+Returned in the same error shape for request failures that are not slide or
+job failures. A `500` never includes exception text.
+
+| Code | Status | Meaning |
+|---|---|---|
+| `BAD_REQUEST` | 4xx | Fallback for a client error with no more specific code |
+| `UNAUTHORIZED` | 401 | Missing or wrong `X-Device-Token` (any path except `/v1/health`, including unknown paths) |
+| `NOT_FOUND` | 404 | Unknown path or resource |
+| `METHOD_NOT_ALLOWED` | 405 | Path exists, method does not |
+| `VALIDATION_ERROR` | 422 | Request body or query failed validation |
+| `INTERNAL_ERROR` | 500 | Unhandled server error |
 
 ## SQLite schema
 ```sql

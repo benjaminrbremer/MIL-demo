@@ -6,10 +6,13 @@ weights, the feature cache, and all job state. Nothing else touches these.
 
 ## Commands
 - Install / sync: `uv sync`
-- Run (local only): `uv run uvicorn app.main:app --host 127.0.0.1 --port 8000`
+- Config: `cp .env.example .env` and set `DEVICE_TOKEN`
+- Run (local only):
+  `uv run --env-file .env uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000`
 - Run (reachable over Tailscale): bind `--host` to the Tailscale IP, never
   `0.0.0.0` on an untrusted network
 - Tests: `uv run pytest`
+- Format / lint: `uv run ruff format app tests && uv run ruff check app tests`
 
 ## Suggested layout
 ```
@@ -17,6 +20,9 @@ app/
   main.py          FastAPI app; lifespan loads + verifies models, starts
                    registry poller and job worker
   config.py        settings from environment (.env); see .env.example
+  auth.py          X-Device-Token check (pure ASGI middleware)
+  health.py        GET /v1/health
+  gpu.py           GPU probe (torch imported lazily)
   db.py            sqlite3 access; schema in docs/api-contract.md
   registry.py      acquisition-folder polling, size-stability check,
                    hashing, PHI-safe metadata extraction
