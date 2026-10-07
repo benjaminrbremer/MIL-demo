@@ -41,10 +41,12 @@ Each numbered item is one feature branch, squash-merged into `main`.
   repeat-run test; tissue threshold 20; `NO_TISSUE` below 16 patches; new
   `NO_RESOLUTION` code; attention and coordinates saved for item 7.
   D-038 to D-048. REQ-010, REQ-011, REQ-015, REQ-016, REQ-020.
-- [ ] **7. `feat(inference): add heatmap rendering and quality metrics`**
+- [x] **7. `feat(inference): add heatmap rendering and quality metrics`**
   Percentile-normalized attention PNG; tissue area and fraction, patch
   count, uncertainty flag, segmentation-suspect flag (tissue fraction
-  > 0.6). REQ-012 to REQ-014, REQ-021.
+  > 0.6). REQ-012 to REQ-014, REQ-021. Rendered in the pipeline as the
+  `rendering` stage; p1-p99 clip, TURBO, RGBA PNG on the mask grid. D-053,
+  D-054.
 
 ## Day 2 - web app
 - [ ] **8. `feat(web): scaffold Express server and static client`**

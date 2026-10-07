@@ -5,6 +5,8 @@ GET  /v1/jobs            jobs, newest first; ?slide_id= filters to one slide
 GET  /v1/jobs/{id}       one job
 GET  /v1/jobs/{id}/events  Server-Sent Events: snapshot, progress, then
                          completed or failed (D-013, D-034)
+GET  /v1/jobs/{id}/heatmap.png  attention heatmap of a completed job
+                         (REQ-014, D-053)
 
 The SSE stream uses FastAPI's built-in EventSourceResponse (D-035), which
 also sends a `: ping` comment every 15 s so idle connections stay open.
@@ -17,6 +19,7 @@ from collections.abc import AsyncIterator
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import FileResponse
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from pydantic import BaseModel
 
@@ -25,12 +28,18 @@ from app.db import JobStatus, SlideStatus
 from app.errors import ApiError, ErrorCode
 from app.health import ModelInfo
 from app.jobs import JobState
+from app.pipeline import HEATMAP_FILENAME, job_output_dir
 from app.tiles import NOT_READY_MESSAGE
 
 router = APIRouter(prefix="/v1")
 
 SSE_POLL_S = 0.25
 ALREADY_ACTIVE_MESSAGE = "Slide already has a queued or running job"
+NOT_COMPLETED_MESSAGE = "Job has not completed"
+NO_HEATMAP_MESSAGE = "Heatmap not available"
+# A completed job's heatmap never changes. "private": it sits behind the
+# device token, so shared caches must not keep it (as for tiles).
+HEATMAP_CACHE_CONTROL = "private, max-age=3600"
 _FINISHED = (JobStatus.COMPLETED, JobStatus.FAILED)
 
 
@@ -191,3 +200,29 @@ async def job_events(
                     progress=JobProgress(done=state.done, total=state.total),
                 ),
             )
+
+
+@router.get("/jobs/{job_id}/heatmap.png", response_class=FileResponse)
+def job_heatmap(
+    request: Request, row: Annotated[sqlite3.Row, Depends(_job_row)]
+) -> FileResponse:
+    """The attention heatmap PNG of a completed job (REQ-014, D-053, D-054).
+
+    404 NOT_FOUND for an unknown job, or a completed job with no heatmap
+    (finished before heatmaps existed). 409 JOB_NOT_COMPLETED otherwise.
+    """
+    # The path is built from the ID of a row that exists, never from raw
+    # request text, so a crafted ID can't reach outside DATA_DIR/jobs/.
+    if row["status"] != JobStatus.COMPLETED:
+        raise ApiError(409, ErrorCode.JOB_NOT_COMPLETED, NOT_COMPLETED_MESSAGE)
+    path = job_output_dir(request.app.state.settings.data_dir, row["id"])
+    path = path / HEATMAP_FILENAME
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail=NO_HEATMAP_MESSAGE)
+    # A plain `def` endpoint runs in FastAPI's thread pool, and FileResponse
+    # streams the file, so the event loop is never blocked on disk.
+    return FileResponse(
+        path,
+        media_type="image/png",
+        headers={"Cache-Control": HEATMAP_CACHE_CONTROL},
+    )

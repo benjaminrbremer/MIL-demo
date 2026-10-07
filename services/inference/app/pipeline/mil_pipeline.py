@@ -4,6 +4,8 @@
                   thumbnail      128 um grid   CTransPath, batches     ABMIL
                   tissue mask    on tissue     of 64 (or cache hit)    probabilities
                                                                        + attention
+              ──> rendering
+                  heatmap PNG, uncertainty flag, quality metrics (D-054)
 
 Each stage is our own code on OpenSlide, OpenCV, and PyTorch. Progress is
 reported at every stage change and after every feature batch (REQ-010).
@@ -30,17 +32,25 @@ import openslide
 
 from app.errors import ErrorCode
 from app.models import LoadedModels
-from app.pipeline import PipelineError, PipelineResult, Report, Stage
+from app.pipeline import (
+    HEATMAP_FILENAME,
+    PipelineError,
+    PipelineResult,
+    Report,
+    Stage,
+    job_output_dir,
+)
 from app.pipeline.cache import FeatureCache, cache_key
 from app.pipeline.features import PatchDataset, extract_features
+from app.pipeline.heatmap import render_heatmap
 from app.pipeline.mil import aggregate
 from app.pipeline.patch import patch_size_px, tissue_patches
+from app.pipeline.quality import UNCERTAINTY_BAND, is_uncertain, quality_metrics
 from app.pipeline.segment import SATURATION_THRESHOLD, segment_slide
 
 logger = logging.getLogger(__name__)
 
 MIN_PATCHES = 16  # D-043
-JOBS_DIRNAME = "jobs"
 
 NO_RESOLUTION_MESSAGE = (
     "The slide has no microns-per-pixel value, so patches can't be sized"
@@ -87,6 +97,7 @@ class MilPipeline:
         with handle:
             try:
                 report(Stage.SEGMENTING)
+                slide_size = handle.dimensions  # level 0, for the heatmap
                 started = time.perf_counter()
                 tissue = segment_slide(handle, mpp)
                 timings[Stage.SEGMENTING] = _since(started)
@@ -143,7 +154,15 @@ class MilPipeline:
         probabilities, attention = aggregate(models.mil, features, models.device)
         timings[Stage.AGGREGATING] = _since(started)
 
-        self._save_outputs(job_id, coords, attention, tissue.mask)
+        report(Stage.RENDERING)
+        started = time.perf_counter()
+        heatmap = render_heatmap(
+            coords, attention, slide_size, patch_px, tissue.mask.shape
+        )
+        quality = quality_metrics(tissue.mask, tissue.mpp, len(coords))
+        self._save_outputs(job_id, coords, attention, tissue.mask, heatmap)
+        timings[Stage.RENDERING] = _since(started)
+
         predicted = int(np.argmax(probabilities))
         logger.info(
             "Job %s slide %s: %d patches, predicted %s (p=%.3f)",
@@ -160,26 +179,34 @@ class MilPipeline:
                     for name, p in zip(models.class_names, probabilities, strict=True)
                 },
                 "predicted_class": models.class_names[predicted],
-                # Filled by roadmap item 7 (D-047).
-                "uncertain": None,
-                "uncertainty_band": None,
-                "quality": None,
+                "uncertain": is_uncertain(probabilities),
+                "uncertainty_band": list(UNCERTAINTY_BAND),
+                "quality": quality,
             },
             models=[dict(info) for info in models.infos],
             timings_s={str(stage): t for stage, t in timings.items()},
         )
 
     def _save_outputs(
-        self, job_id: str, coords: np.ndarray, attention: np.ndarray, mask: np.ndarray
+        self,
+        job_id: str,
+        coords: np.ndarray,
+        attention: np.ndarray,
+        mask: np.ndarray,
+        heatmap: bytes,
     ) -> None:
-        """Save what the heatmap and quality metrics need (D-047, D-050)."""
-        # Internal files, never served directly: patch coordinates and
+        """Save the job's outputs (D-050) and its heatmap PNG (D-054)."""
+        # The .npy files are internal and never served: patch coordinates and
         # attention line up row for row; the mask is on the thumbnail grid.
-        out = self._data_dir / JOBS_DIRNAME / job_id
+        # heatmap.png is served by GET /v1/jobs/{id}/heatmap.png. It is
+        # written before the job is marked completed, so the endpoint never
+        # sees a half-written file.
+        out = job_output_dir(self._data_dir, job_id)
         out.mkdir(parents=True, exist_ok=True)
         np.save(out / "coords.npy", coords)
         np.save(out / "attention.npy", attention)
         np.save(out / "mask.npy", mask)
+        (out / HEATMAP_FILENAME).write_bytes(heatmap)
 
 
 def _since(started: float) -> float:
