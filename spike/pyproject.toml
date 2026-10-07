@@ -1,0 +1,30 @@
+[project]
+name = "mil-spike"
+version = "0.1.0"
+description = "Throwaway spike environment for the WSInfer-MIL model (branch spike/model, never merged)."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "wsinfer-mil==0.1.0",
+    "torch==2.14.1",
+    "torchvision",
+    "openslide-bin>=4.0.1.2",
+    "openslide-python>=1.4.6",
+    "jupyterlab",
+    "ipykernel",
+    "matplotlib",
+    "nbconvert",
+    # wsinfer-mil 0.1.0 imports zarr.storage.KVStore, removed in zarr 3.
+    "zarr<3",
+    # tiffslide 2.x on zarr 2 needs a tifffile from before its zarr-3 migration.
+    "tifffile<2025.5",
+]
+
+# CUDA 13.2 build of PyTorch (driver reports CUDA 13.3).
+[tool.uv.sources]
+torch = { index = "pytorch-cu132" }
+torchvision = { index = "pytorch-cu132" }
+
+[[tool.uv.index]]
+name = "pytorch-cu132"
+url = "https://download.pytorch.org/whl/cu132"
+explicit = true
