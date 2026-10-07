@@ -119,9 +119,10 @@ config (see spike findings). `error` is `{"code", "message"}` when failed.
 current stage has no count (only `extracting_features` reports counts).
 `models` is `[]` and `timings_s` is `{}` until the job completes; a
 completed job lists both models (same shape as in `/v1/health`) and the
-seconds spent in each stage that ran (REQ-015). `probabilities` and
-`predicted_class` are filled from item 6; `uncertain`, `uncertainty_band`
-and `quality` are `null` until item 7 (D-047). On a feature-cache hit
+seconds spent in each stage that ran (REQ-015). `uncertain` is `true` when the
+predicted class's probability lies within `uncertainty_band`, both ends
+included (REQ-012). Jobs completed before item 7 have `uncertain`,
+`uncertainty_band` and `quality` set to `null` (D-047, D-054). On a feature-cache hit
 (same slide contents analysed before, D-046) progress jumps straight to
 `total`/`total`, and the stage changes may be merged into one SSE event or
 none at all, because the job can finish within one 250 ms poll.
@@ -148,6 +149,23 @@ A `: ping` comment is sent after 15 s without events. Unknown job:
 
 The stream closes after `completed` or `failed`.
 
+### `GET /v1/jobs/{id}/heatmap.png`
+The attention heatmap of a completed job (REQ-014, D-053, D-054), rendered
+during the job's `rendering` stage.
+- `200 image/png`, RGBA, `Cache-Control: private, max-age=3600`. The
+  image has the slide's aspect ratio (longest side 2048 px) and covers
+  exactly the level-0 rectangle `[0, width] x [0, height]`: overlay it at
+  `(0, 0, width, height)` in slide coordinates.
+- Each analysed 128 µm patch is coloured by its attention score, clipped
+  to the slide's 1st and 99th percentiles and rescaled to [0, 1], with the
+  TURBO colour map (blue low, red high). Pixels without a patch have alpha
+  0. Patches are fully opaque; the client sets the overlay opacity.
+- Colours are relative to this slide: they show where the model looked,
+  not the probability of metastasis. A negative slide has red areas too.
+- `404 NOT_FOUND`: unknown job, or a completed job with no heatmap
+  (completed before item 7).
+- `409 JOB_NOT_COMPLETED`: the job is queued, running or failed.
+
 ## Error codes
 
 | Code | Where | Meaning | How to trigger on purpose |
@@ -172,6 +190,7 @@ job failures. A `500` never includes exception text.
 | `VALIDATION_ERROR` | 422 | Request body or query failed validation |
 | `SLIDE_NOT_READY` | 409 | The slide exists but its status is not `ready` (tiles, job creation) |
 | `JOB_ALREADY_ACTIVE` | 409 | `POST /v1/jobs` for a slide that already has a queued or running job |
+| `JOB_NOT_COMPLETED` | 409 | Heatmap requested for a job that is not `completed` (D-054) |
 | `INTERNAL_ERROR` | 500 | Unhandled server error |
 
 ## SQLite schema
@@ -225,6 +244,8 @@ Under `DATA_DIR`, besides the SQLite database:
   `attention.npy` (raw attention score per patch, same row order) and
   `mask.npy` (tissue mask on the thumbnail grid): saved by every completed
   job for the heatmap and quality metrics (D-047, D-050).
+- `jobs/<job_id>/heatmap.png`: the rendered heatmap, served by
+  `GET /v1/jobs/{id}/heatmap.png` (D-054).
 
 ## Web app routes (Node)
 The browser calls only these. Node forwards to `/v1/...` with the token and

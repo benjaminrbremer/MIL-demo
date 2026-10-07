@@ -1,4 +1,4 @@
-"""Job endpoint and SSE tests (REQ-008, REQ-009, REQ-010, REQ-017)."""
+"""Job endpoint, SSE, and heatmap tests (REQ-008 to REQ-010, REQ-014, REQ-017)."""
 
 import json
 import logging
@@ -10,9 +10,10 @@ from fastapi.testclient import TestClient
 
 from app import db, jobs_api
 from app.db import DB_FILENAME, JobStatus, SlideStatus
+from app.errors import ErrorCode
 from app.jobs import INFERENCE_FAILED_MESSAGE, JobQueue
 from app.main import create_app
-from app.pipeline import PipelineResult, Stage
+from app.pipeline import HEATMAP_FILENAME, PipelineResult, Stage, job_output_dir
 from tests.fakes import PHI_NAME, fake_model_loader
 from tests.helpers import GatedPipeline, add_ready_slide, job_status, wait_until
 
@@ -147,6 +148,7 @@ def test_post_job_without_slide_id_is_422(client, auth_headers):
         ("GET", "/v1/jobs"),
         ("GET", "/v1/jobs/some-id"),
         ("GET", "/v1/jobs/some-id/events"),
+        ("GET", "/v1/jobs/some-id/heatmap.png"),
     ],
 )
 def test_job_endpoints_require_token(client, method, path):
@@ -185,7 +187,7 @@ def test_get_job(client, auth_headers, db_path):
     assert response.json()["id"] == job_id
 
 
-@pytest.mark.parametrize("suffix", ["", "/events"])
+@pytest.mark.parametrize("suffix", ["", "/events", "/heatmap.png"])
 def test_unknown_job_is_404(client, auth_headers, suffix):
     """An unknown job ID gets a JSON 404 NOT_FOUND, also from the SSE endpoint."""
     response = client.get(f"/v1/jobs/no-such-job{suffix}", headers=auth_headers)
@@ -348,3 +350,69 @@ def test_req_009_job_state_persists_across_restart(settings, auth_headers):
 
     assert after == before
     assert after["status"] == "completed"
+
+
+def heatmap_url(job_id: str) -> str:
+    """The heatmap endpoint for a job."""
+    return f"/v1/jobs/{job_id}/heatmap.png"
+
+
+def test_req_014_completed_job_serves_heatmap_png(
+    app, client, auth_headers, db_path, pipeline
+):
+    """REQ-014: a completed job's heatmap is served as a private, cacheable PNG."""
+    pipeline.release()
+    job_id = post_job(client, auth_headers, add_ready_slide(db_path)).json()["id"]
+    wait_until(lambda: job_status(db_path, job_id) == JobStatus.COMPLETED)
+    # The fake pipeline renders nothing; put a file where the real one would.
+    out = job_output_dir(app.state.settings.data_dir, job_id)
+    out.mkdir(parents=True)
+    png = b"\x89PNG\r\n\x1a\nfake"
+    (out / HEATMAP_FILENAME).write_bytes(png)
+
+    response = client.get(heatmap_url(job_id), headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.headers["cache-control"] == "private, max-age=3600"
+    assert response.content == png
+    # No filename (REQ-006): FileResponse adds Content-Disposition only if asked.
+    assert "content-disposition" not in response.headers
+
+
+def test_completed_job_without_heatmap_is_404(client, auth_headers, db_path, pipeline):
+    """A job completed before heatmaps existed (item 6) gets 404 NOT_FOUND."""
+    pipeline.release()
+    job_id = post_job(client, auth_headers, add_ready_slide(db_path)).json()["id"]
+    wait_until(lambda: job_status(db_path, job_id) == JobStatus.COMPLETED)
+
+    response = client.get(heatmap_url(job_id), headers=auth_headers)
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_heatmap_of_running_or_queued_job_is_409(client, auth_headers, db_path):
+    """A job that hasn't finished gets 409 JOB_NOT_COMPLETED."""
+    running = post_job(client, auth_headers, add_ready_slide(db_path, "a.tif"))
+    queued = post_job(client, auth_headers, add_ready_slide(db_path, "b.tif"))
+    running_id, queued_id = running.json()["id"], queued.json()["id"]
+    wait_until(lambda: job_status(db_path, running_id) == JobStatus.RUNNING)
+
+    for job_id in (running_id, queued_id):
+        response = client.get(heatmap_url(job_id), headers=auth_headers)
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "JOB_NOT_COMPLETED"
+
+
+def test_heatmap_of_failed_job_is_409(client, auth_headers, db_path):
+    """A failed job has no heatmap: 409 JOB_NOT_COMPLETED."""
+    job_id = db.insert_job(db_path, add_ready_slide(db_path), db.utc_now_iso())
+    db.mark_job_failed(
+        db_path, job_id, db.utc_now_iso(), ErrorCode.NO_TISSUE, "No tissue"
+    )
+
+    response = client.get(heatmap_url(job_id), headers=auth_headers)
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "JOB_NOT_COMPLETED"

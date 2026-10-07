@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 
+import cv2 as cv
 import numpy as np
 import openslide
 import pytest
@@ -23,6 +24,7 @@ from app.jobs import JobQueue
 from app.pipeline import PipelineError, Stage
 from app.pipeline.features import BATCH_SIZE, PatchDataset, extract_features
 from app.pipeline.mil_pipeline import MIN_PATCHES, MilPipeline
+from app.pipeline.quality import is_uncertain
 from tests.fakes import PHI_NAME, fake_models
 from tests.helpers import wait_until
 
@@ -110,6 +112,7 @@ def test_req_010_reports_stages_in_order_with_patch_counts(make_pipeline):
         Stage.PATCHING,
         Stage.EXTRACTING_FEATURES,
         Stage.AGGREGATING,
+        Stage.RENDERING,
     ]
     counts = report.counts()
     total = counts[0][1]
@@ -131,9 +134,26 @@ def test_req_011_result_has_probabilities_and_predicted_class(make_pipeline):
     assert outcome.result["predicted_class"] == max(
         probabilities, key=probabilities.get
     )
-    # Filled by item 7 (D-047).
-    assert outcome.result["uncertain"] is None
-    assert outcome.result["quality"] is None
+
+
+def test_req_012_req_013_result_has_uncertainty_and_quality(make_pipeline):
+    """REQ-012 / REQ-013 / REQ-021: the result carries the flag and quality metrics."""
+    outcome = make_pipeline()(slide_row(), Recorder(), job_id="job-1")
+
+    result = outcome.result
+    assert result["uncertain"] is is_uncertain(
+        np.array(list(result["probabilities"].values()))
+    )
+    assert result["uncertainty_band"] == [0.3, 0.7]
+    quality = result["quality"]
+    # The tissue block is 2000 x 1400 um = 2.8 mm^2 of a 12 mm^2 slide. The
+    # thumbnail mask is coarse at the edges, so allow a little slack.
+    assert quality["tissue_area_mm2"] == pytest.approx(2.8, rel=0.05)
+    assert quality["tissue_fraction"] == pytest.approx(2.8 / 12, rel=0.05)
+    # Matched against the saved coordinates in the next test.
+    assert quality["patch_count"] >= MIN_PATCHES
+    assert quality["blur_fraction"] is None
+    assert quality["segmentation_suspect"] is False
 
 
 def test_req_015_result_records_models_and_stage_timings(make_pipeline, models):
@@ -146,6 +166,7 @@ def test_req_015_result_records_models_and_stage_timings(make_pipeline, models):
         "patching",
         "extracting_features",
         "aggregating",
+        "rendering",
     }
     assert all(t >= 0 for t in outcome.timings_s.values())
 
@@ -184,7 +205,7 @@ def test_req_015_completed_job_row_stores_result_models_and_timings(
 
 def test_saves_coords_attention_and_mask_for_the_heatmap(tmp_path, make_pipeline):
     """D-047: coordinates, attention, and mask are saved under jobs/<job_id>/."""
-    make_pipeline()(slide_row(), Recorder(), job_id="job-1")
+    outcome = make_pipeline()(slide_row(), Recorder(), job_id="job-1")
 
     out = tmp_path / "data" / "jobs" / "job-1"
     coords = np.load(out / "coords.npy")
@@ -197,6 +218,31 @@ def test_saves_coords_attention_and_mask_for_the_heatmap(tmp_path, make_pipeline
     x0, y0, x1, y1 = TISSUE_BOX
     assert (coords[:, 0] >= x0 - 128).all() and (coords[:, 0] < x1).all()
     assert (coords[:, 1] >= y0 - 128).all() and (coords[:, 1] < y1).all()
+    assert outcome.result["quality"]["patch_count"] == len(coords)
+
+
+def test_req_014_saves_heatmap_png_on_the_mask_grid(tmp_path, make_pipeline):
+    """REQ-014 / D-054: heatmap.png is saved, mask-sized, opaque only on patches."""
+    make_pipeline()(slide_row(), Recorder(), job_id="job-1")
+
+    out = tmp_path / "data" / "jobs" / "job-1"
+    mask = np.load(out / "mask.npy")
+    png = (out / "heatmap.png").read_bytes()
+    image = cv.imdecode(np.frombuffer(png, np.uint8), cv.IMREAD_UNCHANGED)
+    assert image.shape == (*mask.shape, 4)
+    opaque = image[:, :, 3] == 255
+    # Opaque pixels sit on the tissue block (plus at most one patch around
+    # it), and glass far from it stays transparent.
+    rows, cols = mask.shape
+    sx, sy = cols / SLIDE_SIZE[0], rows / SLIDE_SIZE[1]
+    x0, y0, x1, y1 = TISSUE_BOX
+    inside = np.zeros_like(opaque)
+    inside[
+        int((y0 - 128) * sy) : int((y1 + 128) * sy) + 1,
+        int((x0 - 128) * sx) : int((x1 + 128) * sx) + 1,
+    ] = True
+    assert opaque.any()
+    assert not (opaque & ~inside).any()
 
 
 def test_second_run_uses_feature_cache(make_pipeline, models):

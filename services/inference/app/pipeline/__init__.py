@@ -17,9 +17,20 @@ fakes.
 import sqlite3
 from dataclasses import dataclass, field
 from enum import StrEnum
+from pathlib import Path
 from typing import Protocol
 
 from app.errors import ErrorCode
+
+JOBS_DIRNAME = "jobs"
+HEATMAP_FILENAME = "heatmap.png"
+
+
+def job_output_dir(data_dir: Path, job_id: str) -> Path:
+    """Folder for one job's saved outputs: DATA_DIR/jobs/<job_id>/ (D-050)."""
+    # Lives here, not in mil_pipeline.py, so the API can find the heatmap
+    # without importing torch.
+    return data_dir / JOBS_DIRNAME / job_id
 
 
 class Stage(StrEnum):
