@@ -70,6 +70,8 @@ Each numbered item is one feature branch, squash-merged into `main`.
   Bump versions, tag `inference-v0.1.0` and `web-v0.1.0`.
 - [ ] Rehearsal over Tailscale from the interview location: full live run,
       trigger each error state, confirm timing.
+      Mac to device path (`/v1/health` over Tailscale) first verified
+      2026-10-07 at home (D-055).
 
 ## Stretch (only after 13)
 See `docs/future-work.md`.

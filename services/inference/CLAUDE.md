@@ -14,11 +14,29 @@ weights, the feature cache, and all job state. Nothing else touches these.
   `uv run --env-file .env uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000 --timeout-graceful-shutdown 5`
   (the timeout keeps open SSE streams from blocking Ctrl+C; D-037)
 - Run (reachable over Tailscale): bind `--host` to the Tailscale IP, never
-  `0.0.0.0` on an untrusted network
+  `0.0.0.0` on an untrusted network:
+  `uv run --env-file .env uvicorn app.main:create_app --factory --host $(tailscale ip -4) --port 8000 --timeout-graceful-shutdown 5`
+  (then `127.0.0.1` gets no answer; that's expected)
 - Tests: `uv run pytest` (fake models, runs anywhere)
 - Real-model tests (desktop GPU):
   `MIL_TEST_SLIDE=~/slides-staging/test_062.tif uv run pytest -m "models or slide"`
 - Format / lint: `uv run ruff format app tests && uv run ruff check app tests`
+
+## Network setup (once per machine; D-055)
+Tailscale runs inside WSL2 as its own tailnet device, not on Windows. The
+desktop is Windows 10, which has no mirrored networking.
+1. `curl -fsSL https://tailscale.com/install.sh | sh` (official script; adds
+   Tailscale's apt repository; `tailscaled` runs under systemd, which
+   `/etc/wsl.conf` enables)
+2. `sudo tailscale up --hostname=mil-device`, then open the printed URL and
+   sign in with the same account as the Mac
+3. Check: `tailscale ip -4` prints a `100.x` address; from the Mac,
+   `curl http://<that address>:8000/v1/health` returns the health JSON while
+   the service runs
+- WSL shuts down when nothing is running in it, and `mil-device` drops off
+  the tailnet with it. A terminal running the service keeps it up.
+- The web app's `INFERENCE_URL` is `http://mil-device:8000` (MagicDNS), or
+  the `100.x` address if the name doesn't resolve.
 
 ## Suggested layout
 ```
