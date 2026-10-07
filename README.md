@@ -24,3 +24,12 @@ Setup instructions are added as each component is built.
 ## License
 MIT. Third-party components, models, and data carry their own licenses;
 see `docs/soup.md`.
+
+### Models and data
+- MIL model: "Metastasis classification (CAMELYON16)" by Jakub Kaczmarzyk,
+  `kaczmarj/breast-lymph-nodes-metastasis.camelyon16` on Hugging Face,
+  CC-BY-4.0. Used unmodified.
+- Patch encoder: CTransPath (Wang et al.), weights from `kaczmarj/CTransPath`
+  on Hugging Face, GPL-3.0 per the model card. Used unmodified.
+- Model weights and slides are downloaded locally and never redistributed
+  with this repository.

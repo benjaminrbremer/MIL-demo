@@ -11,9 +11,10 @@ project's own license file before marking "Verified".
 
 | Component | Version | Used by | License (expected) | Verified | Source | Function we rely on |
 |---|---|---|---|---|---|---|
-| PyTorch | TBD | inference | BSD-3-Clause | [ ] | pytorch.org | Tensor computation and GPU inference |
-| CUDA toolkit / driver | TBD | inference | NVIDIA EULA | [ ] | nvidia.com | GPU execution |
-| wsinfer-mil | TBD | inference | Apache-2.0 | [ ] | github.com/SBU-BMI/wsinfer-mil | Pipeline components and model loading |
+| PyTorch | TBD (spike: 2.14.1+cu132) | inference | BSD-3-Clause | [ ] | pytorch.org | Tensor computation, GPU inference, TorchScript model loading, `DataLoader` |
+| torchvision | TBD (spike: 0.29.1+cu132) | inference | BSD-3-Clause | [ ] | pytorch.org/vision | Encoder input transform: resize to 224 px, ImageNet normalisation |
+| OpenCV (opencv-python-headless) | TBD (spike: 5.0.0.93) | inference | Apache-2.0 | [ ] | opencv.org | Tissue segmentation: colour conversion, median blur, threshold, morphology, connected components (D-039) |
+| CUDA runtime / driver | Runtime 13.2 and cuDNN 9.24 bundled in the PyTorch wheel; driver 610.57.01 (WSL) / 610.88 (Windows) | inference | NVIDIA EULA | [ ] | nvidia.com | GPU execution |
 | OpenSlide (C library, via openslide-bin) | 4.0.1 (openslide-bin 4.0.1.2) | inference | LGPL-2.1 | [ ] | openslide.org | Reading pyramidal WSI files: dimensions, levels, microns per pixel |
 | openslide-python | 1.4.6 | inference | LGPL-2.1 | [ ] | openslide.org | Python bindings, Deep Zoom generator |
 | FastAPI | 0.142.2 | inference | MIT | [ ] | fastapi.tiangolo.com | HTTP API |
@@ -30,6 +31,11 @@ project's own license file before marking "Verified".
 Add any transitive dependency that directly affects results (for example,
 the patch encoder's model-definition library) as it is identified.
 
+wsinfer-mil 0.1.0 (Apache-2.0) was used only in the model spike
+(`spike/model` branch) and is not part of the system (D-038). Versions marked
+"spike" are the ones tested there; the locked versions are recorded when
+item 6 adds them to `uv.lock`.
+
 ## Development tools (not shipped)
 Used to build and test the inference service; not loaded at runtime.
 
@@ -44,8 +50,8 @@ Used to build and test the inference service; not loaded at runtime.
 
 | Item | Version / revision | License (to verify) | Verified | Source | Notes |
 |---|---|---|---|---|---|
-| MIL model (CAMELYON16 metastasis) | TBD | TBD | [ ] | huggingface.co/kaczmarj | Hash in `models/manifest.json` |
-| Patch encoder weights | TBD | TBD | [ ] | TBD | Hash in `models/manifest.json` |
+| MIL model: gated ABMIL, CAMELYON16 metastasis (`kaczmarj/breast-lymph-nodes-metastasis.camelyon16`) | revision `507b473a727db6f216902b062d9b677f8a298689` | CC-BY-4.0 (model card) | [ ] | huggingface.co/kaczmarj | `torchscript_model.pt`, SHA-256 `b3e58653…ac9c`; full hash in `models/manifest.json`. Trained on CAMELYON16; test split held out. Credited in README |
+| Patch encoder: CTransPath (`kaczmarj/CTransPath`, re-hosted; original by Wang et al.) | revision `d426c122c59cf1db044745ceebdf775064020a89` | GPL-3.0 (Hugging Face card; verify against original release) | [ ] | huggingface.co/kaczmarj/CTransPath | `torchscript_model.pt`, SHA-256 `8c5e08e0…35fe2`; full hash in `models/manifest.json`. Not redistributed (D-042) |
 | CAMELYON16 slides | test split | TBD | [ ] | CAMELYON16 challenge | Never committed to the repo |
 
 ## Known anomalies review
@@ -55,4 +61,7 @@ and any known bug that could affect this use.
 
 | Component | Reviewed on | Relevant known issues | Impact / mitigation |
 |---|---|---|---|
-| | | | |
+| MIL model file | 2026-10-07 | TorchScript file saved in training mode; dropout active unless `.eval()` is called | Non-deterministic output; mitigated by `.eval()` and a repeat-run test (D-040, REQ-020) |
+| PyTorch 2.14 | 2026-10-07 | `torch.jit.load` deprecated (FutureWarning) | Still works in the pinned version; fallback is the MIL model's safetensors file (D-040) |
+| PyTorch `DataLoader` under WSL2 | 2026-10-07 | Intermittent `cuMemHostAlloc` out-of-memory in the pin-memory thread (1 of 6 spike runs) | `pin_memory=False` (D-045) |
+| wsinfer-mil tissue segmentation | 2026-10-07 | Fixed saturation threshold 7 counts tinted backgrounds as tissue | Our own segmentation with threshold 20 (D-039) |

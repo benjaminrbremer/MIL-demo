@@ -42,7 +42,12 @@ app/
     quality.py     tissue area / fraction, patch count, uncertainty flag
   errors.py        error codes (see docs/api-contract.md)
 models/
-  manifest.json    model names, versions, sources, SHA-256 hashes
+  manifest.json    model names, pinned revisions, sources, SHA-256 hashes,
+                   licences (D-041)
+  weights/         downloaded weight files (gitignored, never committed)
+scripts/
+  fetch_models.py  one-off download of the pinned weights + hash check
+                   (standard library only; D-041)
 tests/
 ```
 
@@ -62,3 +67,11 @@ tests/
 - Use the `logging` module, not print. Include job ID and slide ID in log
   lines.
 - Read `docs/spike-findings.md` before touching `pipeline/`.
+- Pipeline stages are our own code on OpenSlide and PyTorch. Do not import
+  wsinfer-mil or tiffslide (D-038).
+- Put both models in `.eval()` mode after loading. The MIL TorchScript file
+  is saved in training mode, so dropout would make results random (D-040,
+  REQ-020).
+- Tissue threshold is 20, not wsinfer-mil's 7 (D-039). Feature extraction:
+  `FEATURE_WORKERS` (default 8), `forkserver` start method,
+  `pin_memory=False` (D-045).

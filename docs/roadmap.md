@@ -4,11 +4,15 @@ Status: `[ ]` not started, `[~]` in progress, `[x]` done.
 Each numbered item is one feature branch, squash-merged into `main`.
 
 ## Day 0 - before the clean history starts
-- [ ] Start downloading 3-4 CAMELYON16 test-split slides: one clear
+- [~] Start downloading 3-4 CAMELYON16 test-split slides: one clear
       positive, one negative, one small slide for live runs, optionally one
       hard case (small metastasis). Record which in `docs/spike-findings.md`.
-- [ ] Spike notebook on branch `spike/model` (never merged). Answer every
-      question in `docs/spike-findings.md`.
+      Four staged (test_001, test_062, test_065, test_128); ground truth and
+      roles still to record.
+- [~] Spike notebook on branch `spike/model` (never merged). Answer every
+      question in `docs/spike-findings.md`. All answered except the demo
+      slide table and timings for the other three slides. Outcomes recorded
+      as D-038 to D-048.
 
 ## Day 1 - inference service
 - [x] **1. `chore(repo): initialize repository`**
@@ -33,10 +37,14 @@ Each numbered item is one feature branch, squash-merged into `main`.
 - [ ] **6. `feat(inference): implement MIL pipeline with progress reporting`**
   Replace the stub with the real stages; model hash verification at
   startup; feature cache keyed by SHA-256; models and timings recorded on
-  the job. REQ-010, REQ-011, REQ-015, REQ-016.
+  the job. Weight fetch script and `models/manifest.json`; `.eval()` and a
+  repeat-run test; tissue threshold 20; `NO_TISSUE` below 16 patches; new
+  `NO_RESOLUTION` code; attention and coordinates saved for item 7.
+  D-038 to D-048. REQ-010, REQ-011, REQ-015, REQ-016, REQ-020.
 - [ ] **7. `feat(inference): add heatmap rendering and quality metrics`**
-  Percentile-normalized attention PNG; tissue area (or fraction), patch
-  count, uncertainty flag. REQ-012 to REQ-014.
+  Percentile-normalized attention PNG; tissue area and fraction, patch
+  count, uncertainty flag, segmentation-suspect flag (tissue fraction
+  > 0.6). REQ-012 to REQ-014, REQ-021.
 
 ## Day 2 - web app
 - [ ] **8. `feat(web): scaffold Express server and static client`**

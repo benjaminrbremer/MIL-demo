@@ -23,3 +23,13 @@ Out of scope for v0.1. Listed so the boundaries are explicit.
 - **Registry change detection**: notice slide files that are removed or
   replaced after registration (see D-029).
 - **Multi-file slide formats** such as `.mrxs` (excluded by D-026).
+- **Scanner-adaptive tissue threshold**: set the saturation threshold
+  relative to each slide's own background (e.g. most common value plus a
+  margin) instead of the fixed 20 tuned on CAMELYON16 Philips scans (D-039).
+- **Pale-fat detection**: keep adipose tissue that falls below the
+  saturation threshold, e.g. with a brightness or texture cue.
+- **Move off TorchScript**: load the MIL model's safetensors file into a
+  re-implemented ABMIL module, and find a non-TorchScript encoder source,
+  before `torch.jit` is removed from PyTorch (D-040).
+- **Feature cache eviction**: size limit or age-based cleanup of
+  `DATA_DIR/cache/` (D-046).

@@ -36,7 +36,9 @@ Timestamps are ISO 8601 UTC. Errors use the shape
 }
 ```
 `gpu.name` is `null` when no GPU is available. `queue` counts jobs in
-SQLite. Until roadmap item 6 lands, `models` is `[]`.
+SQLite. Until roadmap item 6 lands, `models` is `[]`. `name` is the Hugging
+Face repo, `version` the short pinned revision (e.g. `507b473a`), and
+`sha256` the hash of the weight file from `models/manifest.json` (D-040, D-041).
 
 ### Slide object
 ```json
@@ -104,7 +106,8 @@ Without `slide_id`, all jobs. With an unknown `slide_id`, `[]`.
       "tissue_area_mm2": 41.7,
       "tissue_fraction": 0.12,
       "patch_count": 18000,
-      "blur_fraction": null
+      "blur_fraction": null,
+      "segmentation_suspect": false
     }
   }
 }
@@ -115,7 +118,12 @@ config (see spike findings). `error` is `{"code", "message"}` when failed.
 current stage has no count (only `extracting_features` reports counts).
 `models` is `[]` and `timings_s` is `{}` until the pipeline records them.
 Until roadmap item 6, a stub pipeline runs and completed jobs have
-`result: null` (D-036).
+`result: null` (D-036). From item 6, `probabilities` and `predicted_class`
+are filled; `uncertain` and `quality` are `null` until item 7 (D-047).
+`quality.segmentation_suspect` is `true` when the tissue fraction is above
+0.6, which on the demo slides means the background was segmented as tissue
+(REQ-021). `tissue_area_mm2` is always present on a completed job, because
+jobs on slides without microns per pixel fail with `NO_RESOLUTION` (D-044).
 
 ### `GET /v1/jobs/{id}/events` (SSE)
 On connect, the server immediately sends the current job snapshot, so a
@@ -141,7 +149,8 @@ The stream closes after `completed` or `failed`.
 |---|---|---|---|
 | `DEVICE_OFFLINE` | Web only | Node cannot reach the inference service | Stop the Python service |
 | `SLIDE_UNREADABLE` | Slide status / tiles / job | OpenSlide cannot open the file | Drop a renamed text file in the folder |
-| `NO_TISSUE` | Job | Segmentation found no usable tissue | Blank or background-only image |
+| `NO_TISSUE` | Job | Segmentation found fewer than 16 patches of tissue (D-043) | Blank or background-only image |
+| `NO_RESOLUTION` | Job | The slide has no microns-per-pixel value, so 128 µm patches can't be sized (D-044) | A pyramidal TIFF written without resolution tags |
 | `INTERRUPTED` | Job | Service restarted while job was queued or running | Restart the service mid-job |
 | `INFERENCE_FAILED` | Job | Any other pipeline failure, including GPU OOM | (catch-all) |
 
