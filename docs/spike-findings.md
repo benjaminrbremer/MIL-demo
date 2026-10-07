@@ -166,10 +166,30 @@ were within a few percent.
 |---|---|---|---|---|---|---|---|---|
 | test_062 (135168 × 28672), threshold 7 | 455 MiB | 11,728 | 0.11 s | 0.07 s | 23.8 s | 46 ms (CPU), 9 ms (GPU) | 23.7 s | 0.80 GiB torch-allocated; about 1.9 GB above idle in `nvidia-smi` (includes CUDA context) |
 | test_062, threshold 20 (recommended) | 455 MiB | 2,226 | ~0.1 s | ~0.1 s | ~4.6 s (estimated: 2,226 patches at 486 patches/s; not run separately) | | | |
+| test_062, threshold 20, **service pipeline (item 6)** | 455 MiB | 2,281 | 0.08 s | < 0.01 s | 5.4 s (1.0 s of it worker start-up; 7.2 s on the first job after startup) | 22 ms (GPU) | 5.5 s | not measured |
+| test_001, threshold 20, service pipeline (item 6) | 1.09 GiB | 6,674 | | | 14.0 s (475 patches/s incl. start-up) | | 14.6 s | not measured |
 
 End-to-end CLI (`wsinfer-mil run`, 16 workers, includes Python start-up and model
 loading): 31.6 s wall, 2.0 GB peak RAM, no-metastasis 0.834961 / metastasis 0.165039
 (with dropout on, so not reproducible; see Surprises).
+
+### Measured in item 6 (service pipeline, not the notebook)
+- Results: test_062 P(metastasis) 0.131267 (no-metastasis); test_001 0.952
+  (metastasis). Two full uncached runs on test_062 give bit-identical
+  probabilities and attention (REQ-020). A feature-cache hit completes the
+  job in about 0.1 s.
+- Segmentation: our OpenCV port gives masks bit-identical to wsinfer-mil's
+  at threshold 20 on all four staged slides, after matching scikit-image's
+  anchors for the even 6 x 6 closing (D-051). Patches: the centre-pixel test
+  keeps more than wsinfer-mil's polygon test, all on the tissue outline:
+  test_001 6,674 vs 6,518; test_062 2,281 vs 2,226; test_065 1,294 vs 1,239;
+  test_128 2,459 vs 2,417. A variant that requires all four mask pixels
+  around the centre keeps 0.6-1.3% *fewer* (not adopted; D-039 stands).
+- Encoder transform without torchvision: bit-identical to wsinfer-mil's
+  torchvision transform on 200 test_062 patches, edge patches included.
+- Worker start-up (D-045): about 3.1 s per job with `forkserver`, each worker
+  importing torch. With the forkserver preloading the feature module
+  (D-052): 2.4 s on the first job after startup, then about 1 s.
 
 ## Demo slides chosen
 Staged in `~/slides-staging/` (all in the model's test split). Ground truth still to

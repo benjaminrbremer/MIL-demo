@@ -11,9 +11,8 @@ project's own license file before marking "Verified".
 
 | Component | Version | Used by | License (expected) | Verified | Source | Function we rely on |
 |---|---|---|---|---|---|---|
-| PyTorch | TBD (spike: 2.14.1+cu132) | inference | BSD-3-Clause | [ ] | pytorch.org | Tensor computation, GPU inference, TorchScript model loading, `DataLoader` |
-| torchvision | TBD (spike: 0.29.1+cu132) | inference | BSD-3-Clause | [ ] | pytorch.org/vision | Encoder input transform: resize to 224 px, ImageNet normalisation |
-| OpenCV (opencv-python-headless) | TBD (spike: 5.0.0.93) | inference | Apache-2.0 | [ ] | opencv.org | Tissue segmentation: colour conversion, median blur, threshold, morphology, connected components (D-039) |
+| PyTorch | 2.14.1 (`+cu132` CUDA build on Linux; CPU build on macOS, D-048) | inference | BSD-3-Clause | [ ] | pytorch.org | Tensor computation, GPU inference, TorchScript model loading, `DataLoader` with forkserver worker processes, encoder input normalisation |
+| OpenCV (opencv-python-headless) | 5.0.0.93 | inference | Apache-2.0 | [ ] | opencv.org | Tissue segmentation: colour conversion, median blur, threshold, morphology, connected components (D-039) |
 | CUDA runtime / driver | Runtime 13.2 and cuDNN 9.24 bundled in the PyTorch wheel; driver 610.57.01 (WSL) / 610.88 (Windows) | inference | NVIDIA EULA | [ ] | nvidia.com | GPU execution |
 | OpenSlide (C library, via openslide-bin) | 4.0.1 (openslide-bin 4.0.1.2) | inference | LGPL-2.1 | [ ] | openslide.org | Reading pyramidal WSI files: dimensions, levels, microns per pixel |
 | openslide-python | 1.4.6 | inference | LGPL-2.1 | [ ] | openslide.org | Python bindings, Deep Zoom generator |
@@ -21,8 +20,8 @@ project's own license file before marking "Verified".
 | Starlette | 1.7.0 | inference | BSD-3-Clause | [ ] | starlette.dev | ASGI toolkit under FastAPI; we import its exception and middleware types directly |
 | Pydantic | 2.13.5 | inference | MIT | [ ] | pydantic.dev | Response models and request validation |
 | Uvicorn | 0.54.0 | inference | BSD-3-Clause | [ ] | uvicorn.org | ASGI server |
-| NumPy | TBD | inference | BSD-3-Clause | [ ] | numpy.org | Array math (attention, metrics) |
-| Pillow | 12.3.0 | inference | MIT-CMU (HPND) | [ ] | python-pillow.org | Image objects returned by openslide-python; JPEG tile encoding; heatmap PNG encoding |
+| NumPy | 2.5.3 | inference | BSD-3-Clause | [ ] | numpy.org | Arrays for masks, patch coordinates, features, attention; `.npy` feature cache and job outputs |
+| Pillow | 12.3.0 | inference | MIT-CMU (HPND) | [ ] | python-pillow.org | Image objects returned by openslide-python; encoder input resize (bilinear, 224 px); JPEG tile encoding; heatmap PNG encoding |
 | Express | TBD | web | MIT | [ ] | expressjs.com | HTTP server and routing |
 | OpenSeadragon | TBD | web | BSD-3-Clause | [ ] | openseadragon.github.io | Deep Zoom slide viewer |
 | Node.js runtime | TBD | web | MIT | [ ] | nodejs.org | JavaScript runtime |
@@ -32,9 +31,10 @@ Add any transitive dependency that directly affects results (for example,
 the patch encoder's model-definition library) as it is identified.
 
 wsinfer-mil 0.1.0 (Apache-2.0) was used only in the model spike
-(`spike/model` branch) and is not part of the system (D-038). Versions marked
-"spike" are the ones tested there; the locked versions are recorded when
-item 6 adds them to `uv.lock`.
+(`spike/model` branch) and is not part of the system (D-038). Neither are
+torchvision, scikit-image, or shapely, which it used: our segmentation
+reproduces its mask exactly with OpenCV, and our encoder transform is
+bit-identical to its torchvision transform (D-051).
 
 ## Development tools (not shipped)
 Used to build and test the inference service; not loaded at runtime.

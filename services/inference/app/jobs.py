@@ -200,7 +200,7 @@ class JobQueue:
             reporter = _Reporter(self, job_id)
             started = time.monotonic()
             try:
-                outcome = self._pipeline(slide, reporter)
+                outcome = self._pipeline(slide, reporter, job_id=job_id)
             except PipelineError as exc:
                 reporter.flush()
                 self._fail(job_id, slide_id, exc.code, exc.message)

@@ -36,9 +36,10 @@ Timestamps are ISO 8601 UTC. Errors use the shape
 }
 ```
 `gpu.name` is `null` when no GPU is available. `queue` counts jobs in
-SQLite. Until roadmap item 6 lands, `models` is `[]`. `name` is the Hugging
+SQLite. `models` lists the encoder and the MIL model: `name` is the Hugging
 Face repo, `version` the short pinned revision (e.g. `507b473a`), and
 `sha256` the hash of the weight file from `models/manifest.json` (D-040, D-041).
+The service does not start unless both files match their hashes (REQ-016).
 
 ### Slide object
 ```json
@@ -116,10 +117,14 @@ Without `slide_id`, all jobs. With an unknown `slide_id`, `[]`.
 config (see spike findings). `error` is `{"code", "message"}` when failed.
 `progress` is always present; `done` and `total` are `null` when the
 current stage has no count (only `extracting_features` reports counts).
-`models` is `[]` and `timings_s` is `{}` until the pipeline records them.
-Until roadmap item 6, a stub pipeline runs and completed jobs have
-`result: null` (D-036). From item 6, `probabilities` and `predicted_class`
-are filled; `uncertain` and `quality` are `null` until item 7 (D-047).
+`models` is `[]` and `timings_s` is `{}` until the job completes; a
+completed job lists both models (same shape as in `/v1/health`) and the
+seconds spent in each stage that ran (REQ-015). `probabilities` and
+`predicted_class` are filled from item 6; `uncertain`, `uncertainty_band`
+and `quality` are `null` until item 7 (D-047). On a feature-cache hit
+(same slide contents analysed before, D-046) progress jumps straight to
+`total`/`total`, and the stage changes may be merged into one SSE event or
+none at all, because the job can finish within one 250 ms poll.
 `quality.segmentation_suspect` is `true` when the tissue fraction is above
 0.6, which on the demo slides means the background was segmented as tissue
 (REQ-021). `tissue_area_mm2` is always present on a completed job, because
@@ -210,6 +215,16 @@ CREATE INDEX idx_jobs_slide ON jobs(slide_id, created_at);
 CREATE UNIQUE INDEX idx_jobs_one_active
   ON jobs(slide_id) WHERE status IN ('queued', 'running');
 ```
+
+## Device data on disk (internal, never served)
+Under `DATA_DIR`, besides the SQLite database:
+- `cache/<key>/coords.npy`, `features.npy`: feature cache. The key is a
+  SHA-256 of slide SHA-256, encoder SHA-256, patch size and tissue
+  threshold (D-046). No filenames.
+- `jobs/<job_id>/coords.npy` (patch top-left x, y at level 0),
+  `attention.npy` (raw attention score per patch, same row order) and
+  `mask.npy` (tissue mask on the thumbnail grid): saved by every completed
+  job for the heatmap and quality metrics (D-047, D-050).
 
 ## Web app routes (Node)
 The browser calls only these. Node forwards to `/v1/...` with the token and

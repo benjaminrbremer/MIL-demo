@@ -5,14 +5,31 @@ description = "Device-style WSI analysis service: slide registry, tiles, MIL job
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.142.2",
+    "numpy>=2.5.3",
+    "opencv-python-headless>=5.0.0.93",
     "openslide-bin>=4.0.1.2",
     "openslide-python>=1.4.6",
+    "torch==2.14.1",
     "uvicorn>=0.54.0",
 ]
+
+# CUDA 13.2 build of PyTorch on the desktop (WSL2, driver reports CUDA 13.3).
+# macOS has no CUDA wheels, so it gets the CPU build from PyPI (D-048).
+[tool.uv.sources]
+torch = { index = "pytorch-cu132", marker = "sys_platform == 'linux'" }
+
+[[tool.uv.index]]
+name = "pytorch-cu132"
+url = "https://download.pytorch.org/whl/cu132"
+explicit = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "models: needs the real weights in models/weights/ (skipped otherwise)",
+    "slide: needs a real slide at MIL_TEST_SLIDE (skipped otherwise)",
+]
 
 [tool.ruff]
 target-version = "py312"

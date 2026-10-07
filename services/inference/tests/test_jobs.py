@@ -9,7 +9,6 @@ from app.db import JobStatus
 from app.errors import ErrorCode
 from app.jobs import INFERENCE_FAILED_MESSAGE, JobQueue
 from app.pipeline import PipelineError, PipelineResult, Stage
-from app.pipeline.stub import FAKE_PATCH_COUNT, stub_pipeline
 from tests.fakes import PHI_NAME
 from tests.helpers import GatedPipeline, add_ready_slide, job_status, wait_until
 
@@ -68,7 +67,7 @@ def test_req_008_jobs_run_one_at_a_time_in_fifo_order(db_path, make_queue):
 def test_req_009_stop_during_job_marks_it_interrupted(db_path, make_queue):
     """REQ-009: a job running when the service stops ends failed with INTERRUPTED."""
 
-    def until_stopped(slide, report):
+    def until_stopped(slide, report, *, job_id):
         """Report progress forever; report() raises once stop() is called."""
         while True:
             report(Stage.SEGMENTING)
@@ -103,7 +102,7 @@ def test_req_010_progress_db_writes_are_throttled(db_path, make_queue):
     clock = FakeClock()
     seen = {}
 
-    def pipeline(slide, report):
+    def pipeline(slide, report, *, job_id):
         """Report at chosen fake times and record what SQLite holds after each."""
 
         def stored_done() -> int | None:
@@ -135,7 +134,7 @@ def test_req_010_progress_db_writes_are_throttled(db_path, make_queue):
 def test_req_017_pipeline_error_code_is_kept(db_path, make_queue):
     """REQ-017: a PipelineError fails the job with its own code and message."""
 
-    def no_tissue(slide, report):
+    def no_tissue(slide, report, *, job_id):
         """Fail the way segmentation does on a blank slide."""
         raise PipelineError(ErrorCode.NO_TISSUE, "No tissue found")
 
@@ -154,7 +153,7 @@ def test_req_017_unexpected_error_is_inference_failed_and_not_retried(
     """REQ-017: any other exception is INFERENCE_FAILED, logged without its text, run once."""
     calls = []
 
-    def flaky(slide, report):
+    def flaky(slide, report, *, job_id):
         """Fail the first job with a path in the message; complete later ones."""
         calls.append(slide["id"])
         if len(calls) == 1:
@@ -188,7 +187,7 @@ def test_completed_job_stores_result_models_and_timings(db_path, make_queue):
         models=[{"role": "mil", "name": "m", "version": "1", "sha256": "c" * 64}],
         timings_s={"segmenting": 1.5},
     )
-    jobs = make_queue(lambda slide, report: outcome)
+    jobs = make_queue(lambda slide, report, *, job_id: outcome)
     job_id = jobs.submit(add_ready_slide(db_path))["id"]
     wait_until(lambda: finished(db_path, job_id))
 
@@ -197,17 +196,3 @@ def test_completed_job_stores_result_models_and_timings(db_path, make_queue):
     assert row["started_at"] is not None and row["finished_at"] is not None
     assert row["result_json"] == '{"predicted_class": "tumor"}'
     assert row["timings_json"] == '{"segmenting": 1.5}'
-
-
-def test_stub_pipeline_reports_every_stage_in_order():
-    """The stub walks the five stages in order, with patch counts while extracting."""
-    reports = []
-
-    outcome = stub_pipeline(None, lambda *args: reports.append(args), stage_seconds=0)
-
-    stages = list(dict.fromkeys(report[0] for report in reports))
-    assert stages == list(Stage)
-    counts = [r[1:] for r in reports if r[0] is Stage.EXTRACTING_FEATURES]
-    assert counts[0] == (0, FAKE_PATCH_COUNT)
-    assert counts[-1] == (FAKE_PATCH_COUNT, FAKE_PATCH_COUNT)
-    assert outcome.result is None

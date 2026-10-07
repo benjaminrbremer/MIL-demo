@@ -59,6 +59,6 @@ def health(request: Request) -> HealthResponse:
         service_version=__version__,
         api_version=API_VERSION,
         gpu=GpuInfo(**gpu_info()),
-        models=[],  # filled from models/manifest.json in roadmap item 6
+        models=[ModelInfo(**info) for info in request.app.state.models.infos],
         queue=QueueInfo(running=running, queued=queued),
     )

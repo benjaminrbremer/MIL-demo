@@ -13,7 +13,7 @@ from app.db import DB_FILENAME, JobStatus, SlideStatus
 from app.jobs import INFERENCE_FAILED_MESSAGE, JobQueue
 from app.main import create_app
 from app.pipeline import PipelineResult, Stage
-from tests.fakes import PHI_NAME
+from tests.fakes import PHI_NAME, fake_model_loader
 from tests.helpers import GatedPipeline, add_ready_slide, job_status, wait_until
 
 JOB_FIELDS = {
@@ -40,7 +40,7 @@ def pipeline() -> GatedPipeline:
 
 @pytest.fixture
 def client(app, pipeline):
-    """A TestClient whose job queue runs `pipeline` instead of the stub."""
+    """A TestClient whose job queue runs `pipeline` instead of the MIL pipeline."""
     # Replaced before the lifespan starts the worker.
     app.state.job_queue = JobQueue(app.state.db_path, pipeline)
     with TestClient(app) as c:
@@ -200,7 +200,7 @@ def test_req_010_events_stream_reports_stage_and_patch_progress(
     """REQ-010: the SSE stream sends a snapshot, stage and patch progress, then completed."""
     gate = threading.Event()
 
-    def paced(slide, report):
+    def paced(slide, report, *, job_id):
         """Wait for the test, then report with gaps much longer than the SSE poll."""
         gate.wait(5)
         for args in [
@@ -273,7 +273,7 @@ def test_req_017_failed_job_reports_code_without_exception_text(
 ):
     """REQ-017: an unexpected pipeline error is INFERENCE_FAILED with a fixed message."""
 
-    def broken(slide, report):
+    def broken(slide, report, *, job_id):
         """Fail with a file path in the exception text."""
         raise OSError(f"cannot open /acq/{PHI_NAME}")
 
@@ -320,7 +320,7 @@ def test_req_009_startup_marks_queued_and_running_jobs_interrupted(
     )
     db.mark_job_running(db_path, running, "2026-10-07T14:00:02Z")
 
-    with TestClient(create_app(settings)) as client:
+    with TestClient(create_app(settings, model_loader=fake_model_loader)) as client:
         jobs = client.get("/v1/jobs", headers=auth_headers).json()
 
     assert {job["id"] for job in jobs} == {queued, running}
@@ -332,9 +332,9 @@ def test_req_009_startup_marks_queued_and_running_jobs_interrupted(
 
 def test_req_009_job_state_persists_across_restart(settings, auth_headers):
     """REQ-009: a finished job is still there, unchanged, after the service restarts."""
-    app = create_app(settings)
+    app = create_app(settings, model_loader=fake_model_loader)
     app.state.job_queue = JobQueue(
-        app.state.db_path, lambda slide, report: PipelineResult(result=None)
+        app.state.db_path, lambda slide, report, *, job_id: PipelineResult(result=None)
     )
     with TestClient(app) as client:
         job_id = post_job(
@@ -343,7 +343,7 @@ def test_req_009_job_state_persists_across_restart(settings, auth_headers):
         wait_until(lambda: job_status(app.state.db_path, job_id) == JobStatus.COMPLETED)
         before = client.get(f"/v1/jobs/{job_id}", headers=auth_headers).json()
 
-    with TestClient(create_app(settings)) as client:
+    with TestClient(create_app(settings, model_loader=fake_model_loader)) as client:
         after = client.get(f"/v1/jobs/{job_id}", headers=auth_headers).json()
 
     assert after == before

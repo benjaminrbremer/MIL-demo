@@ -34,7 +34,7 @@ Each numbered item is one feature branch, squash-merged into `main`.
   `GET /v1/jobs`, `GET /v1/jobs/{id}`, SSE `GET /v1/jobs/{id}/events`
   (with a stub pipeline that just sleeps and reports progress).
   REQ-008 to REQ-010, REQ-017.
-- [ ] **6. `feat(inference): implement MIL pipeline with progress reporting`**
+- [x] **6. `feat(inference): implement MIL pipeline with progress reporting`**
   Replace the stub with the real stages; model hash verification at
   startup; feature cache keyed by SHA-256; models and timings recorded on
   the job. Weight fetch script and `models/manifest.json`; `.eval()` and a

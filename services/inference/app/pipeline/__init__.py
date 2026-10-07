@@ -2,18 +2,19 @@
 
 A pipeline is any callable with the signature
 
-    pipeline(slide: sqlite3.Row, report: Report) -> PipelineResult
+    pipeline(slide: sqlite3.Row, report: Report, *, job_id: str) -> PipelineResult
 
 It runs on the job worker thread, so it may block (read slides, use the
 GPU). It publishes progress by calling `report(stage, done, total)`, and
 fails with a defined error code by raising PipelineError (REQ-017). Any
-other exception is reported as INFERENCE_FAILED.
+other exception is reported as INFERENCE_FAILED. `job_id` names the
+folder for the job's saved outputs (D-050).
 
-Until roadmap item 6, the worker runs `app.pipeline.stub.stub_pipeline`.
+The service runs `app.pipeline.mil_pipeline.MilPipeline`; tests pass
+fakes.
 """
 
 import sqlite3
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Protocol
@@ -59,4 +60,10 @@ class Report(Protocol):
         """Publish the current stage and, if known, items done of total."""
 
 
-Pipeline = Callable[[sqlite3.Row, Report], PipelineResult]
+class Pipeline(Protocol):
+    """What the job worker calls to analyse one slide."""
+
+    def __call__(
+        self, slide: sqlite3.Row, report: Report, *, job_id: str
+    ) -> PipelineResult:
+        """Analyse the slide, reporting progress; raise PipelineError on a known failure."""

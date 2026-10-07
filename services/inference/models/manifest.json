@@ -1,0 +1,34 @@
+{
+  "comment": "Pinned model files (D-040, D-041). Fetch with: uv run python scripts/fetch_models.py. The service verifies these hashes at startup and refuses to start on mismatch (REQ-016).",
+  "models": [
+    {
+      "role": "encoder",
+      "name": "kaczmarj/CTransPath",
+      "revision": "d426c122c59cf1db044745ceebdf775064020a89",
+      "file": "torchscript_model.pt",
+      "local_path": "weights/ctranspath-d426c122.pt",
+      "url": "https://huggingface.co/kaczmarj/CTransPath/resolve/d426c122c59cf1db044745ceebdf775064020a89/torchscript_model.pt",
+      "sha256": "8c5e08e059f553087e124aea270dcb8daf147f7b2bc88624725bef68c7335fe2",
+      "size_bytes": 111367783,
+      "license": "GPL-3.0 (Hugging Face model card; to verify against the original release)"
+    },
+    {
+      "role": "mil",
+      "name": "kaczmarj/breast-lymph-nodes-metastasis.camelyon16",
+      "revision": "507b473a727db6f216902b062d9b677f8a298689",
+      "file": "torchscript_model.pt",
+      "local_path": "weights/abmil-camelyon16-507b473a.pt",
+      "url": "https://huggingface.co/kaczmarj/breast-lymph-nodes-metastasis.camelyon16/resolve/507b473a727db6f216902b062d9b677f8a298689/torchscript_model.pt",
+      "sha256": "b3e58653c39af79b5d2111ca1661c2c7e9bd12656ef8a11f1319a8aceaddac9c",
+      "size_bytes": 1338936,
+      "license": "CC-BY-4.0",
+      "config": {
+        "type": "abmil",
+        "patch_size_um": 128,
+        "feature_extractor": "ctranspath",
+        "num_classes": 2,
+        "class_names": ["no-metastasis", "metastasis"]
+      }
+    }
+  ]
+}

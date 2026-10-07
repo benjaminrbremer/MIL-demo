@@ -1,10 +1,13 @@
-"""Test doubles for OpenSlide, shared by the registry and slide API tests."""
+"""Test doubles for OpenSlide and the models, shared across the tests."""
 
 from pathlib import Path
 from typing import ClassVar, Self
 
 import openslide
+import torch
 from PIL import Image
+
+from app.models import LoadedModels
 
 # A filename that looks like PHI, so a leak is easy to spot.
 PHI_NAME = "DOE-JOHN-1970-01-01.tif"
@@ -84,3 +87,65 @@ class FakeBrokenImageSlide(FakeImageSlide):
     def read_region(self, location, level, size):
         """Fail like OpenSlide does on a corrupt region, path included."""
         raise openslide.OpenSlideError(f"Read error in /acq/{PHI_NAME}")
+
+
+# Stand-ins for the two models: small, deterministic, CPU-only, and with
+# the same input and output shapes as CTransPath and the ABMIL model.
+FEATURE_DIM = 768
+CLASS_NAMES = ("no-metastasis", "metastasis")
+FAKE_ENCODER_SHA256 = "e" * 64
+
+
+class FakeEncoder(torch.nn.Module):
+    """(B, 3, 224, 224) -> (B, 768): mean colour per channel, tiled. Counts calls."""
+
+    def __init__(self) -> None:
+        """No weights, so no randomness."""
+        super().__init__()
+        self.calls = 0
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Encode a batch."""
+        self.calls += 1
+        return x.mean(dim=(2, 3)).repeat(1, FEATURE_DIM // 3)
+
+
+class FakeMil(torch.nn.Module):
+    """(N, 768) -> (logits (1, 2), attention (N, 1)), like the ABMIL model."""
+
+    def forward(self, h: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Score each patch by its mean feature; logits from the mean score."""
+        attention = h.mean(dim=1, keepdim=True)
+        score = attention.mean()
+        return torch.stack([-score, score]).view(1, 2), attention
+
+
+def fake_models() -> LoadedModels:
+    """LoadedModels with the fake encoder and MIL model, on the CPU."""
+    return LoadedModels(
+        encoder=FakeEncoder(),
+        mil=FakeMil(),
+        device="cpu",
+        class_names=CLASS_NAMES,
+        patch_size_um=128.0,
+        encoder_sha256=FAKE_ENCODER_SHA256,
+        infos=(
+            {
+                "role": "encoder",
+                "name": "fake/encoder",
+                "version": "aaaaaaaa",
+                "sha256": FAKE_ENCODER_SHA256,
+            },
+            {
+                "role": "mil",
+                "name": "fake/mil",
+                "version": "bbbbbbbb",
+                "sha256": "f" * 64,
+            },
+        ),
+    )
+
+
+def fake_model_loader(models_dir: Path) -> LoadedModels:
+    """A create_app() model_loader that ignores the folder and returns fakes."""
+    return fake_models()

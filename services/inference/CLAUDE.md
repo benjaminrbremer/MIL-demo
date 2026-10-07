@@ -6,6 +6,8 @@ weights, the feature cache, and all job state. Nothing else touches these.
 
 ## Commands
 - Install / sync: `uv sync`
+- Model weights (once per machine): `uv run python scripts/fetch_models.py`
+  (the service refuses to start without them; REQ-016)
 - Config: `cp .env.example .env` and set `DEVICE_TOKEN`, `ACQUISITION_DIR`,
   `DATA_DIR`
 - Run (local only):
@@ -13,14 +15,16 @@ weights, the feature cache, and all job state. Nothing else touches these.
   (the timeout keeps open SSE streams from blocking Ctrl+C; D-037)
 - Run (reachable over Tailscale): bind `--host` to the Tailscale IP, never
   `0.0.0.0` on an untrusted network
-- Tests: `uv run pytest`
+- Tests: `uv run pytest` (fake models, runs anywhere)
+- Real-model tests (desktop GPU):
+  `MIL_TEST_SLIDE=~/slides-staging/test_062.tif uv run pytest -m "models or slide"`
 - Format / lint: `uv run ruff format app tests && uv run ruff check app tests`
 
 ## Suggested layout
 ```
 app/
-  main.py          FastAPI app; lifespan loads + verifies models, starts
-                   registry poller and job worker
+  main.py          FastAPI app; create_app() verifies + loads models
+                   (D-049); lifespan starts registry poller and job worker
   config.py        settings from environment (.env); see .env.example
   auth.py          X-Device-Token check (pure ASGI middleware)
   health.py        GET /v1/health
@@ -33,13 +37,15 @@ app/
   jobs_api.py      /v1/jobs routes and the SSE progress stream
   pipeline/
     __init__.py    pipeline interface: Stage, PipelineError, PipelineResult
-    stub.py        stand-in pipeline until item 6 (sleeps, reports progress)
+    mil_pipeline.py the pipeline the worker runs: stages, errors, outputs
+    cache.py       feature cache keyed by slide + encoder SHA-256 (D-046)
     segment.py     tissue segmentation
     patch.py       patch coordinates
     features.py    patch encoder (feature extraction)
     mil.py         MIL aggregation; returns probabilities + attention
     heatmap.py     percentile-normalized attention -> PNG
     quality.py     tissue area / fraction, patch count, uncertainty flag
+  models.py        manifest, startup hash check, TorchScript loading
   errors.py        error codes (see docs/api-contract.md)
 models/
   manifest.json    model names, pinned revisions, sources, SHA-256 hashes,

@@ -1,7 +1,7 @@
 """GPU availability probe for the health endpoint.
 
-PyTorch is imported lazily and is optional: until roadmap item 6 adds it,
-the service reports no GPU rather than failing to start.
+PyTorch is imported lazily, so importing this module stays cheap; if it
+can't be imported, the service reports no GPU.
 """
 
 

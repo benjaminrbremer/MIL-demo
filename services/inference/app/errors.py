@@ -20,6 +20,7 @@ class ErrorCode(StrEnum):
     # Slide and job failures
     SLIDE_UNREADABLE = "SLIDE_UNREADABLE"
     NO_TISSUE = "NO_TISSUE"
+    NO_RESOLUTION = "NO_RESOLUTION"
     INTERRUPTED = "INTERRUPTED"
     INFERENCE_FAILED = "INFERENCE_FAILED"
     # HTTP-level failures

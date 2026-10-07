@@ -48,7 +48,7 @@ class GatedPipeline:
         self._lock = threading.Lock()
         self._gate = threading.Event()
 
-    def __call__(self, slide, report) -> PipelineResult:
+    def __call__(self, slide, report, *, job_id) -> PipelineResult:
         """Run one fake job; blocks until release() has been called."""
         with self._lock:
             self.calls.append(slide["id"])

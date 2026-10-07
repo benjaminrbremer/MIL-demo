@@ -10,8 +10,9 @@ Tests call create_app(Settings(...)) directly.
 
 import logging
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 
@@ -23,7 +24,8 @@ from app.errors import ErrorCode, register_exception_handlers
 from app.health import router as health_router
 from app.jobs import INTERRUPTED_MESSAGE, JobQueue
 from app.jobs_api import router as jobs_router
-from app.pipeline.stub import stub_pipeline
+from app.models import LoadedModels, load_models
+from app.pipeline.mil_pipeline import MilPipeline
 from app.registry import Registry
 from app.slides import router as slides_router
 from app.tiles import DeepZoomCache
@@ -72,7 +74,7 @@ def configure_logging(level: str) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Run startup work before serving requests and shutdown work after."""
-    # Item 6 loads and verifies models here.
+    # Models were already verified and loaded in create_app().
     logger.info("Inference service %s starting", __version__)
     settings: Settings = app.state.settings
     init_db(app.state.db_path)
@@ -94,10 +96,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Inference service stopping")
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
-    """Build the FastAPI app with token middleware, error handlers, and routes."""
+def create_app(
+    settings: Settings | None = None,
+    *,
+    model_loader: Callable[[Path], LoadedModels] = load_models,
+) -> FastAPI:
+    """Build the FastAPI app with models, token middleware, error handlers, and routes.
+
+    Raises ModelError if a weight file is missing or fails its hash check,
+    so the service refuses to start (REQ-016). Tests pass a `model_loader`
+    that returns small fake models.
+    """
     settings = settings or Settings.from_env()
     configure_logging(settings.log_level)
+    # Loaded here rather than in lifespan: the job queue is built below with
+    # the pipeline, and tests replace app.state.job_queue before the lifespan
+    # runs (D-049). uvicorn --factory calls this at startup, so a failure
+    # here still stops the service from starting.
+    models = model_loader(settings.models_dir)
 
     app = FastAPI(
         title="MIL inference service",
@@ -112,8 +128,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.db_path = settings.data_dir / DB_FILENAME
     app.state.tile_cache = DeepZoomCache()
-    # Item 6 replaces the stub with the MIL pipeline.
-    app.state.job_queue = JobQueue(app.state.db_path, stub_pipeline)
+    app.state.models = models
+    app.state.job_queue = JobQueue(
+        app.state.db_path,
+        MilPipeline(models, settings.data_dir, settings.feature_workers),
+    )
     app.add_middleware(DeviceTokenMiddleware, token=settings.device_token)
     register_exception_handlers(app)
     app.include_router(health_router)

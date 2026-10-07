@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
+from tests.fakes import fake_model_loader
 
 TEST_TOKEN = "test-token-0123456789abcdefghijklmnop"
 
@@ -21,8 +22,8 @@ def settings(tmp_path) -> Settings:
 
 @pytest.fixture
 def app(settings):
-    """A fresh app built from the test settings."""
-    return create_app(settings)
+    """A fresh app built from the test settings, with fake models."""
+    return create_app(settings, model_loader=fake_model_loader)
 
 
 @pytest.fixture
