@@ -16,7 +16,7 @@ Timestamps are ISO 8601 UTC. Errors use the shape
 | GET | `/v1/slides/{id}.dzi` | Deep Zoom descriptor (ready slides only) |
 | GET | `/v1/slides/{id}_files/{level}/{col}_{row}.jpeg` | Deep Zoom tile |
 | POST | `/v1/jobs` | Start analysis: body `{"slide_id": "..."}` |
-| GET | `/v1/jobs?slide_id={id}` | Jobs for a slide, newest first |
+| GET | `/v1/jobs?slide_id={id}` | Jobs, newest first; `slide_id` (optional) filters to one slide |
 | GET | `/v1/jobs/{id}` | One job |
 | GET | `/v1/jobs/{id}/events` | Server-Sent Events progress stream |
 | GET | `/v1/jobs/{id}/heatmap.png` | Attention overlay (completed jobs only) |
@@ -35,8 +35,8 @@ Timestamps are ISO 8601 UTC. Errors use the shape
   "queue": {"running": 0, "queued": 0}
 }
 ```
-`gpu.name` is `null` when no GPU is available. Until roadmap items 6 and 5
-land, `models` is `[]` and `queue` is always zero.
+`gpu.name` is `null` when no GPU is available. `queue` counts jobs in
+SQLite. Until roadmap item 6 lands, `models` is `[]`.
 
 ### Slide object
 ```json
@@ -71,8 +71,15 @@ images, or raw property dumps. `mpp_x`/`mpp_y` may be `null`.
   D-029).
 
 ### `POST /v1/jobs`
-- `202` with the job object (status `queued`)
-- `404` unknown slide; `409` slide not `ready`
+- `202` with the job object as created (status `queued`)
+- `404 NOT_FOUND`: unknown slide
+- `409 SLIDE_NOT_READY`: the slide's status is not `ready`
+- `409 JOB_ALREADY_ACTIVE`: the slide already has a `queued` or `running`
+  job (D-033)
+- `422 VALIDATION_ERROR`: body missing `slide_id`
+
+### `GET /v1/jobs`
+Without `slide_id`, all jobs. With an unknown `slide_id`, `[]`.
 
 ### Job object
 ```json
@@ -104,10 +111,20 @@ images, or raw property dumps. `mpp_x`/`mpp_y` may be `null`.
 ```
 `result` is `null` until `completed`. Class names come from the model
 config (see spike findings). `error` is `{"code", "message"}` when failed.
+`progress` is always present; `done` and `total` are `null` when the
+current stage has no count (only `extracting_features` reports counts).
+`models` is `[]` and `timings_s` is `{}` until the pipeline records them.
+Until roadmap item 6, a stub pipeline runs and completed jobs have
+`result: null` (D-036).
 
 ### `GET /v1/jobs/{id}/events` (SSE)
 On connect, the server immediately sends the current job snapshot, so a
-client that reconnects after a refresh is up to date.
+client that reconnects after a refresh is up to date. If the job has
+already finished, the snapshot is followed straight away by its
+`completed` or `failed` event. `progress` events are sent when progress
+changes, checked every 250 ms; updates in between are merged (D-034).
+A `: ping` comment is sent after 15 s without events. Unknown job:
+`404 NOT_FOUND` (JSON, before any stream starts).
 
 | Event | Data |
 |---|---|
@@ -139,7 +156,8 @@ job failures. A `500` never includes exception text.
 | `NOT_FOUND` | 404 | Unknown path or resource |
 | `METHOD_NOT_ALLOWED` | 405 | Path exists, method does not |
 | `VALIDATION_ERROR` | 422 | Request body or query failed validation |
-| `SLIDE_NOT_READY` | 409 | The slide exists but its status is not `ready` (tiles; job creation from item 5) |
+| `SLIDE_NOT_READY` | 409 | The slide exists but its status is not `ready` (tiles, job creation) |
+| `JOB_ALREADY_ACTIVE` | 409 | `POST /v1/jobs` for a slide that already has a queued or running job |
 | `INTERNAL_ERROR` | 500 | Unhandled server error |
 
 ## SQLite schema
@@ -178,6 +196,10 @@ CREATE TABLE jobs (
 );
 
 CREATE INDEX idx_jobs_slide ON jobs(slide_id, created_at);
+
+-- At most one active job per slide (D-033)
+CREATE UNIQUE INDEX idx_jobs_one_active
+  ON jobs(slide_id) WHERE status IN ('queued', 'running');
 ```
 
 ## Web app routes (Node)

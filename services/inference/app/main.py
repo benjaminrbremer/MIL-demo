@@ -18,9 +18,12 @@ from fastapi import FastAPI
 from app import __version__
 from app.auth import DeviceTokenMiddleware
 from app.config import Settings
-from app.db import DB_FILENAME, init_db
-from app.errors import register_exception_handlers
+from app.db import DB_FILENAME, init_db, interrupt_unfinished_jobs, utc_now_iso
+from app.errors import ErrorCode, register_exception_handlers
 from app.health import router as health_router
+from app.jobs import INTERRUPTED_MESSAGE, JobQueue
+from app.jobs_api import router as jobs_router
+from app.pipeline.stub import stub_pipeline
 from app.registry import Registry
 from app.slides import router as slides_router
 from app.tiles import DeepZoomCache
@@ -69,14 +72,23 @@ def configure_logging(level: str) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Run startup work before serving requests and shutdown work after."""
-    # Later items start the job worker (5) and load and verify models (6)
-    # here.
+    # Item 6 loads and verifies models here.
     logger.info("Inference service %s starting", __version__)
     settings: Settings = app.state.settings
     init_db(app.state.db_path)
+    # Before the worker starts, so it can never pick up a stale job. A job
+    # that was queued or running when the service last stopped is not
+    # resumed (D-004, REQ-009).
+    interrupted = interrupt_unfinished_jobs(
+        app.state.db_path, ErrorCode.INTERRUPTED, INTERRUPTED_MESSAGE, utc_now_iso()
+    )
+    if interrupted:
+        logger.warning("Marked %d unfinished job(s) INTERRUPTED", interrupted)
     registry = Registry(settings.acquisition_dir, app.state.db_path)
     registry.start()
+    app.state.job_queue.start()
     yield
+    app.state.job_queue.stop()
     registry.stop()
     app.state.tile_cache.close_all()
     logger.info("Inference service stopping")
@@ -100,6 +112,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.db_path = settings.data_dir / DB_FILENAME
     app.state.tile_cache = DeepZoomCache()
+    # Item 6 replaces the stub with the MIL pipeline.
+    app.state.job_queue = JobQueue(app.state.db_path, stub_pipeline)
     app.add_middleware(DeviceTokenMiddleware, token=settings.device_token)
     register_exception_handlers(app)
     app.include_router(health_router)
@@ -108,4 +122,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # (with slide_id="<id>.dzi"). The tile routes must come first.
     app.include_router(tiles_router)
     app.include_router(slides_router)
+    app.include_router(jobs_router)
     return app

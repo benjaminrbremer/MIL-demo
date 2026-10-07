@@ -3,10 +3,10 @@
 This is the only endpoint that does not require the device token.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
-from app import __version__
+from app import __version__, db
 from app.gpu import gpu_info
 
 API_VERSION = "v1"
@@ -49,15 +49,16 @@ class HealthResponse(BaseModel):
 
 
 @router.get("/health")
-def health() -> HealthResponse:
+def health(request: Request) -> HealthResponse:
     """Report service status, GPU, model versions, and queue depth."""
     # A plain `def` endpoint runs in a worker thread, so a slow GPU probe
     # never blocks the event loop.
+    running, queued = db.count_active_jobs(request.app.state.db_path)
     return HealthResponse(
         status="ok",
         service_version=__version__,
         api_version=API_VERSION,
         gpu=GpuInfo(**gpu_info()),
         models=[],  # filled from models/manifest.json in roadmap item 6
-        queue=QueueInfo(running=0, queued=0),  # filled by the job queue in item 5
+        queue=QueueInfo(running=running, queued=queued),
     )

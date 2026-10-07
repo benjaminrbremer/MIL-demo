@@ -1,7 +1,7 @@
 """SQLite access with the standard-library sqlite3 module (D-016).
 
-Schema: docs/api-contract.md. This item creates the `slides` table; the
-`jobs` table arrives with the job queue (roadmap item 5).
+Schema: docs/api-contract.md. Tables: `slides` (registry) and `jobs`
+(job queue).
 
 Every operation opens its own short-lived connection. The registry poller
 thread and the API's request threads therefore never share a connection
@@ -9,6 +9,7 @@ object (sqlite3 connections must not be shared across threads by default).
 WAL journal mode lets readers keep reading while the poller writes.
 """
 
+import json
 import sqlite3
 import uuid
 from collections.abc import Iterable, Iterator
@@ -35,6 +36,32 @@ CREATE TABLE IF NOT EXISTS slides (
   error_code    TEXT,
   error_message TEXT
 );
+
+CREATE TABLE IF NOT EXISTS jobs (
+  id             TEXT PRIMARY KEY,
+  slide_id       TEXT NOT NULL REFERENCES slides(id),
+  status         TEXT NOT NULL,
+  stage          TEXT,
+  progress_done  INTEGER,
+  progress_total INTEGER,
+  error_code     TEXT,
+  error_message  TEXT,
+  created_at     TEXT NOT NULL,
+  started_at     TEXT,
+  finished_at    TEXT,
+  models_json    TEXT,
+  timings_json   TEXT,
+  result_json    TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_jobs_slide ON jobs(slide_id, created_at);
+
+-- At most one queued or running job per slide (D-033). A partial index
+-- covers only the rows matching its WHERE clause, so finished jobs don't
+-- count. The database rejects a second active job with IntegrityError,
+-- even if two requests insert at the same moment.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_one_active
+  ON jobs(slide_id) WHERE status IN ('queued', 'running');
 """
 
 
@@ -45,6 +72,15 @@ class SlideStatus(StrEnum):
     REGISTERING = "registering"  # hashing and reading metadata
     READY = "ready"
     UNREADABLE = "unreadable"
+
+
+class JobStatus(StrEnum):
+    """Lifecycle of an analysis job."""
+
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 def utc_now_iso() -> str:
@@ -163,3 +199,140 @@ def list_slides(db_path: Path) -> list[sqlite3.Row]:
         return conn.execute(
             "SELECT * FROM slides ORDER BY detected_at DESC, id"
         ).fetchall()
+
+
+def insert_job(db_path: Path, slide_id: str, created_at: str) -> str:
+    """Insert a `queued` job and return its ID.
+
+    Raises sqlite3.IntegrityError if the slide already has an active job.
+    """
+    job_id = str(uuid.uuid4())
+    with connect(db_path) as conn:
+        conn.execute(
+            "INSERT INTO jobs (id, slide_id, status, created_at) VALUES (?, ?, ?, ?)",
+            (job_id, slide_id, JobStatus.QUEUED, created_at),
+        )
+    return job_id
+
+
+def get_job(db_path: Path, job_id: str) -> sqlite3.Row | None:
+    """One job row by ID, or None."""
+    with connect(db_path) as conn:
+        return conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+
+
+def list_jobs(db_path: Path, slide_id: str | None = None) -> list[sqlite3.Row]:
+    """Job rows, newest first; only one slide's jobs if `slide_id` is given."""
+    # created_at is to the second, so rowid (insertion order) breaks ties.
+    with connect(db_path) as conn:
+        if slide_id is None:
+            return conn.execute(
+                "SELECT * FROM jobs ORDER BY created_at DESC, rowid DESC"
+            ).fetchall()
+        return conn.execute(
+            "SELECT * FROM jobs WHERE slide_id = ?"
+            " ORDER BY created_at DESC, rowid DESC",
+            (slide_id,),
+        ).fetchall()
+
+
+# The job updates below include the expected current status in their WHERE
+# clause, so a late or repeated write can never change a finished job.
+
+
+def mark_job_running(db_path: Path, job_id: str, started_at: str) -> None:
+    """Move a queued job to `running`."""
+    with connect(db_path) as conn:
+        conn.execute(
+            "UPDATE jobs SET status = ?, started_at = ? WHERE id = ? AND status = ?",
+            (JobStatus.RUNNING, started_at, job_id, JobStatus.QUEUED),
+        )
+
+
+def update_job_progress(
+    db_path: Path, job_id: str, stage: str, done: int | None, total: int | None
+) -> None:
+    """Store a running job's stage and patch counts."""
+    with connect(db_path) as conn:
+        conn.execute(
+            "UPDATE jobs SET stage = ?, progress_done = ?, progress_total = ?"
+            " WHERE id = ? AND status = ?",
+            (stage, done, total, job_id, JobStatus.RUNNING),
+        )
+
+
+def mark_job_completed(
+    db_path: Path,
+    job_id: str,
+    finished_at: str,
+    result: dict | None,
+    models: list[dict],
+    timings_s: dict,
+) -> None:
+    """Store a running job's result, models, and timings and mark it completed."""
+    with connect(db_path) as conn:
+        conn.execute(
+            "UPDATE jobs SET status = ?, finished_at = ?, result_json = ?,"
+            " models_json = ?, timings_json = ? WHERE id = ? AND status = ?",
+            (
+                JobStatus.COMPLETED,
+                finished_at,
+                None if result is None else json.dumps(result),
+                json.dumps(models),
+                json.dumps(timings_s),
+                job_id,
+                JobStatus.RUNNING,
+            ),
+        )
+
+
+def mark_job_failed(
+    db_path: Path, job_id: str, finished_at: str, code: str, message: str
+) -> None:
+    """Mark a queued or running job failed with an error code and message."""
+    with connect(db_path) as conn:
+        conn.execute(
+            "UPDATE jobs SET status = ?, finished_at = ?, error_code = ?,"
+            " error_message = ? WHERE id = ? AND status IN (?, ?)",
+            (
+                JobStatus.FAILED,
+                finished_at,
+                code,
+                message,
+                job_id,
+                JobStatus.QUEUED,
+                JobStatus.RUNNING,
+            ),
+        )
+
+
+def interrupt_unfinished_jobs(
+    db_path: Path, code: str, message: str, finished_at: str
+) -> int:
+    """Fail every queued or running job with the given code; return how many."""
+    with connect(db_path) as conn:
+        cursor = conn.execute(
+            "UPDATE jobs SET status = ?, finished_at = ?, error_code = ?,"
+            " error_message = ? WHERE status IN (?, ?)",
+            (
+                JobStatus.FAILED,
+                finished_at,
+                code,
+                message,
+                JobStatus.QUEUED,
+                JobStatus.RUNNING,
+            ),
+        )
+        return cursor.rowcount
+
+
+def count_active_jobs(db_path: Path) -> tuple[int, int]:
+    """Number of (running, queued) jobs."""
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT status, COUNT(*) AS n FROM jobs WHERE status IN (?, ?)"
+            " GROUP BY status",
+            (JobStatus.RUNNING, JobStatus.QUEUED),
+        ).fetchall()
+    counts = {row["status"]: row["n"] for row in rows}
+    return counts.get(JobStatus.RUNNING, 0), counts.get(JobStatus.QUEUED, 0)

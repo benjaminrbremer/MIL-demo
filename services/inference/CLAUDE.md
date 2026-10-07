@@ -9,7 +9,8 @@ weights, the feature cache, and all job state. Nothing else touches these.
 - Config: `cp .env.example .env` and set `DEVICE_TOKEN`, `ACQUISITION_DIR`,
   `DATA_DIR`
 - Run (local only):
-  `uv run --env-file .env uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000`
+  `uv run --env-file .env uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000 --timeout-graceful-shutdown 5`
+  (the timeout keeps open SSE streams from blocking Ctrl+C; D-037)
 - Run (reachable over Tailscale): bind `--host` to the Tailscale IP, never
   `0.0.0.0` on an untrusted network
 - Tests: `uv run pytest`
@@ -28,8 +29,11 @@ app/
   registry.py      acquisition-folder polling, size-stability check,
                    hashing, PHI-safe metadata extraction
   tiles.py         Deep Zoom tile serving (OpenSlide DeepZoomGenerator)
-  jobs.py          FIFO queue, single GPU worker thread, progress pub/sub
+  jobs.py          FIFO queue, single GPU worker thread, in-memory progress
+  jobs_api.py      /v1/jobs routes and the SSE progress stream
   pipeline/
+    __init__.py    pipeline interface: Stage, PipelineError, PipelineResult
+    stub.py        stand-in pipeline until item 6 (sleeps, reports progress)
     segment.py     tissue segmentation
     patch.py       patch coordinates
     features.py    patch encoder (feature extraction)
