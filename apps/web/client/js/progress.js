@@ -13,7 +13,7 @@ const RETRY_MS = 3000;
 const STAGES = ["segmenting", "patching", "extracting_features", "aggregating", "rendering"];
 const STAGE_TEXT = {
     segmenting: "Finding tissue",
-    patching: "Citting the tissue into patches",
+    patching: "Cutting the tissue into patches",
     extracting_features: "Extracting patch features",
     aggregating: "Scoring the slide",
     rendering: "Rendering heatmap and quality metrics",
@@ -33,7 +33,7 @@ let loading = false;        // Waiting for the slide's jobs or for a POST
  * @param {object|null} j  a job object 
  */
 function isActive(j) {
-    return j !== null && j.status === "queued" || j.status === "running";
+    return j !== null && (j.status === "queued" || j.status === "running");
 }
 
 function renderProgress() {
@@ -41,7 +41,7 @@ function renderProgress() {
     bar.hidden = false;
     if (done !== null && total) {
         bar.max = total;
-        bar.value = donel
+        bar.value = done;
         detail.textContent = `${done.toLocaleString()} of ${total.toLocaleString()} patches`;
     } else {
         // No count for this stage: an indeterminate bar (the animated one)
@@ -76,7 +76,7 @@ function render() {
     } else if (job.status === "completed") {
         statusLine.textContent = "Analysis complete."       // Results panel added in a future effort
     } else {
-        statusLine.textContent = `Analysis failed ${job.error.message} (${job.error.code})`;
+        statusLine.textContent = `Analysis failed: ${job.error.message} (${job.error.code})`;
     }
 }
 
@@ -112,7 +112,7 @@ function follow(jobId) {
             render();
         });
     }
-    es.addEventListener("error" () => {
+    es.addEventListener("error", () => {
         if (es.readyState === EventSource.CONNECTING) {
             // The browser is already reconnecting; the next snapshot catches up
             statusLine.textContent = "Connection lost. Reconnecting...";
@@ -158,7 +158,7 @@ export async function showJobFor(id) {
 
 startButton.addEventListener("click", async () => {
     const id = slideId;
-    loading = true;         // disables teh button: no double submit
+    loading = true;         // disables the button: no double submit
     render();
 
     const { ok, body } = await postJson("/api/jobs", { slide_id: id });

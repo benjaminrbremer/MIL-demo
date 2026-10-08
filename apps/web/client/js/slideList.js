@@ -13,11 +13,11 @@ const status = document.querySelector("#slide-list-status");
 /** 
  * The slide ID saved in the URL (#slide=<id>), or null. 
  */
-function slideFromURL() {
+function slideFromUrl() {
     return new URLSearchParams(location.hash.slice(1)).get("slide");
 }
 
-let selectedId = slideFromUrl;      // Restored after a reload (REQ-104)
+let selectedId = slideFromUrl();    // Restored after a reload (REQ-104)
 let restored = false;               // has the restored selection been checked yet?
 let lastJson = null;                // The last list we rendered, as a string
 let onSelect = () => {};

@@ -74,7 +74,7 @@ async function deviceFetch(path, init = {}) {
     try {
         return await fetch(`${config.inferenceUrl}/v1${path}`, {
             ...init,
-            headers: { "X-Device-Token": config.deviceToken },
+            headers: { ...init.headers, "X-Device-Token": config.deviceToken },
             signal: AbortSignal.timeout(TIMEOUT_MS),
         });
     } catch {
@@ -111,7 +111,7 @@ async function errorFrom(response) {
 export async function devicePost(path, data) {
     const response = await deviceFetch(path, {
         method: "POST",
-        headers: { "Content-Type": "application.json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
     });
 
@@ -136,7 +136,7 @@ export async function devicePost(path, data) {
  */
 export async function deviceStream(path) {
     const controller = new AbortController();
-    const timer = settimeout(() => controller.abort(), TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     let response;
 
     try {

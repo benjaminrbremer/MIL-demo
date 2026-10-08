@@ -61,7 +61,7 @@ jobsRouter.get("/api/jobs/:id", async (req, res) => {
 
 // SSE relay: the device's event stream, piped to the browser as it arrives
 jobsRouter.get("/api/jobs/:id/events", async (req, res) => {
-    const { id } = req.paams;
+    const { id } = req.params;
     if (!isUuid(id)) {
         sendNotFound(res);
         return;

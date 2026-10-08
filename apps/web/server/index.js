@@ -30,7 +30,7 @@ app.use(jobsRouter);
 // Unknown /api paths: contract-shaped 404, not Express's HTML page
 app.use("/api", (req, res) => sendNotFound(res));
 
-// Errors from any other route or middleware above. This muse be last
+// Errors from any other route or middleware above. This must be last
 app.use(handleErrors);
 
 // Listen on localhost only: the browser runs on this machine
