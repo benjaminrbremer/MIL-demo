@@ -28,6 +28,17 @@ let slideId = null;         // The selected slide
 let job = null;             // The newest job we know of for it, or null if none
 let source = null;          // The open EventSource, or null
 let loading = false;        // Waiting for the slide's jobs or for a POST
+let onResult = () => {};
+
+/**
+ * @param {{onResult: (job: object|null) => void}} options
+ *   called with the completed job when there is one to show, and with null
+ *   whenever there isn't (another slide, a new job started, a failure)
+ */
+export function startProgress(options) {
+    onResult = options.onResult;
+    render();
+}
 
 /** 
  * @param {object|null} j  a job object 
