@@ -32,7 +32,7 @@ function renderSlide(slide) {
     const button = document.createElement("button");
     button.type = "button";
     button.dataset.slideId = slide.id;
-    button.disables = slide.status !== "ready";
+    button.disabled = slide.status !== "ready";
     if (slide.id === selectedId) {
         button.setAttribute("aria-current", "true");
     }
@@ -80,7 +80,7 @@ async function refresh() {
         // Keep showing the last list; the health banner explains the outage.
         status.textContent = lastJson 
             ? `Can't refresh the list (${body.error.code}). Showing the last known slides.` 
-            : `Can't load slides: ${body.error.mesage}`;
+            : `Can't load slides: ${body.error.message}`;
         return;
     }
 

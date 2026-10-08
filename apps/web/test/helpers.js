@@ -27,6 +27,31 @@ export const HEALTH_BODY = {
   queue: { running: 0, queued: 0 },
 };
 
+export const READY_ID = '11111111-2222-4333-8444-555555555555';
+export const NOT_READY_ID = '66666666-7777-4888-9999-aaaaaaaaaaaa';
+
+/** A slide list shaped like the contract's GET /v1/slides. */
+export const SLIDES_BODY = [
+  {
+    id: READY_ID, status: 'ready', width: 4000, height: 3000, level_count: 3,
+    mpp_x: 0.25, mpp_y: 0.25, detected_at: '2026-10-07T14:03:11Z',
+    registered_at: '2026-10-07T14:03:19Z', error: null,
+  },
+  {
+    id: NOT_READY_ID, status: 'arriving', width: null, height: null, level_count: null,
+    mpp_x: null, mpp_y: null, detected_at: '2026-10-07T14:05:00Z',
+    registered_at: null, error: null,
+  },
+];
+
+export const DZI_XML =
+  '<Image TileSize="254" Overlap="1" Format="jpeg" xmlns="http://schemas.microsoft.com/deepzoom/2008">' +
+  '<Size Width="4000" Height="3000" /></Image>';
+/** Not a real image: bytes a text decoder would mangle, to prove they pass through untouched. */
+export const TILE_BYTES = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x80, 0xfe, 0x01, 0xff, 0xd9]);
+export const TILE_CACHE_CONTROL = 'private, max-age=3600';
+export const TILE_PATH = `/slides/${READY_ID}_files/8/0_0.jpeg`;
+
 /**
  * Start a fake inference service on a free port.
  * Routes (all under /v1):
@@ -35,6 +60,13 @@ export const HEALTH_BODY = {
  *   /missing       404 in the contract error shape
  *   /no-shape      500 with a JSON body that isn't the error shape
  *   /hang          never answers (for the timeout)
+ *   /slides                            200 SLIDES_BODY
+ *   /slides/<READY_ID>.dzi             200 application/xml DZI_XML
+ *   /slides/<READY_ID>_files/8/0_0.jpeg  200 image/jpeg TILE_BYTES, with
+ *                                      Cache-Control and a header that must
+ *                                      not reach the browser
+ *   /slides/<READY_ID>_files/99/0_0.jpeg 500 with a plain-text body
+ *   /slides/<NOT_READY_ID>...          409 SLIDE_NOT_READY
  * @returns {Promise<{url: string, requests: Array<{url: string, headers: object}>, close: () => Promise<void>}>}
  */
 export async function startFakeDevice() {
@@ -65,6 +97,29 @@ export async function startFakeDevice() {
         break;
       case '/v1/hang':
         break; // never respond
+      case '/v1/slides':
+        json(200, SLIDES_BODY);
+        break;
+      case `/v1/slides/${READY_ID}.dzi`:
+        res.writeHead(200, { 'content-type': 'application/xml' });
+        res.end(DZI_XML);
+        break;
+      case `/v1${TILE_PATH}`:
+        res.writeHead(200, {
+          'content-type': 'image/jpeg',
+          'cache-control': TILE_CACHE_CONTROL,
+          'x-device-internal': 'must-not-be-forwarded',
+        });
+        res.end(TILE_BYTES);
+        break;
+      case `/v1/slides/${READY_ID}_files/99/0_0.jpeg`:
+        res.writeHead(500, { 'content-type': 'text/plain' });
+        res.end('Internal Server Error');
+        break;
+      case `/v1/slides/${NOT_READY_ID}.dzi`:
+      case `/v1/slides/${NOT_READY_ID}_files/8/0_0.jpeg`:
+        json(409, { error: { code: 'SLIDE_NOT_READY', message: 'Slide is not ready' } });
+        break;
       default:
         json(404, { error: { code: 'NOT_FOUND', message: 'Not found' } });
     }

@@ -34,12 +34,12 @@ tests are written (roadmap item 12).
 
 | ID | Requirement | Verified by |
 |---|---|---|
-| REQ-101 | The web app shall list slides on the device with their status and refresh the list automatically. | |
-| REQ-102 | The web app shall display a selected ready slide in a zoomable viewer. | |
+| REQ-101 | The web app shall list slides on the device with their status and refresh the list automatically. | `apps/web/test/slides.test.js` (`req_101`); list rendering and auto-refresh in the browser: manual check |
+| REQ-102 | The web app shall display a selected ready slide in a zoomable viewer. | `apps/web/test/slides.test.js` and `apps/web/test/deviceClient.test.js` (`req_102`); viewing and zooming in the browser: manual check |
 | REQ-103 | The web app shall allow the user to start analysis of a ready slide. | |
 | REQ-104 | The web app shall display live job progress and recover it after a browser refresh. | |
 | REQ-105 | The web app shall display the prediction, uncertainty flag, and quality metrics for a completed job. | |
 | REQ-106 | The web app shall allow the heatmap overlay to be shown, hidden, and adjusted in opacity. | |
-| REQ-107 | The web app shall display a device-offline state when the inference service is unreachable. | `apps/web/test/deviceClient.test.js` and `apps/web/test/server.test.js` (`req_107`); banner shown in the browser: manual check |
-| REQ-108 | The browser client shall communicate only with the web server, never directly with the inference service. | `apps/web/test/client.test.js`, `apps/web/test/deviceClient.test.js` and `apps/web/test/server.test.js` (`req_108`) |
+| REQ-107 | The web app shall display a device-offline state when the inference service is unreachable. | `apps/web/test/deviceClient.test.js`, `apps/web/test/server.test.js` and `apps/web/test/slides.test.js` (`req_107`); banner shown in the browser: manual check |
+| REQ-108 | The browser client shall communicate only with the web server, never directly with the inference service. | `apps/web/test/client.test.js`, `apps/web/test/deviceClient.test.js`, `apps/web/test/server.test.js` and `apps/web/test/slides.test.js` (`req_108`) |
 | REQ-109 | The web app shall display a "research demo, not for clinical use" notice and the model versions in use. | `apps/web/test/server.test.js` (`req_109`, notice); model versions shown in the browser: manual check |

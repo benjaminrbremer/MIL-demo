@@ -22,13 +22,16 @@ server/
                     adds X-Device-Token; maps connection failures to
                     DEVICE_OFFLINE
   errors.js         sendError: any error -> contract error shape
-  routes/           /api/health, /api/slides, /api/jobs, tile proxy,
-                    SSE relay
+  routes/           health.js (/api/health); slides.js (/api/slides,
+                    .dzi and tile proxy, D-058); later /api/jobs and
+                    the SSE relay
 client/
   index.html
   css/
   js/               ES modules: api.js, slideList.js, viewer.js,
                     progress.js, results.js
+  (OpenSeadragon: served from node_modules at /vendor/openseadragon/,
+   loaded as a classic script before main.js; D-059)
 test/
   helpers.js        fake inference service; runs server/index.js
   *.test.js         the tests; REQ IDs in test names (e.g. req_107)
