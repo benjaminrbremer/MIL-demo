@@ -12,5 +12,5 @@ export function sendError(res, err) {
     }
     // Unhandled error case indicates bug in our code. Make sure to log it
     console.error(`Unhandled ${err?.name ?? "error"} in web server`);
-    res.status(500).json({ error: { code: "INTERNAL_SERVER", message: "Internal server error" } });
+    res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } });
 }

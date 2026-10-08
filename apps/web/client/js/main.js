@@ -26,7 +26,7 @@ async function checkHealth() {
             body.error.code === "DEVICE_OFFLINE" 
             ? "Analysis device offline. Check that the inference service is running." 
             : `Error: ${body.error.message}`);
-            return;
+        return;
     }
     banner.hidden = true;
     renderModels(body.models);

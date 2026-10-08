@@ -49,9 +49,11 @@ Each numbered item is one feature branch, squash-merged into `main`.
   D-054.
 
 ## Day 2 - web app
-- [ ] **8. `feat(web): scaffold Express server and static client`**
+- [x] **8. `feat(web): scaffold Express server and static client`**
   `deviceClient.js`, `/api/health` with DEVICE_OFFLINE mapping, research
-  notice, `.env.example`, `.nvmrc`. REQ-107 to REQ-109.
+  notice, `.env.example`, `.nvmrc`. REQ-107 to REQ-109. 5 s device
+  timeout, `BAD_GATEWAY`, built-in `--env-file` and `node:test`. D-056,
+  D-057.
 - [ ] **9. `feat(web): add slide list and viewer`**
   Auto-refreshing list with statuses; OpenSeadragon viewer via tile proxy.
   REQ-101, REQ-102.
