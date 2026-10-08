@@ -264,6 +264,21 @@ lowercase UUID, or a tile path that isn't `{level}/{col}_{row}.jpeg` with
 numbers, is answered `404 NOT_FOUND` by Node without contacting the device
 (D-058).
 
+Job routes (D-060):
+- `POST /api/jobs` forwards only `slide_id`, as JSON, whatever else the
+  body holds. A missing or malformed `slide_id` (including a body that
+  isn't `application/json`) is `422 VALIDATION_ERROR` from Node; a body
+  that is invalid JSON is `400 BAD_REQUEST`. Neither reaches the device.
+- `GET /api/jobs?slide_id=` with a malformed ID is `422 VALIDATION_ERROR`;
+  a malformed job ID in `/api/jobs/:id` or `/events` is `404 NOT_FOUND`.
+  Neither reaches the device.
+- `GET /api/jobs/:id/events` relays the device's stream byte for byte as
+  `text/event-stream` with `Cache-Control: no-cache`, event by event as
+  it arrives. Errors before the stream starts (unknown job, device
+  offline) are ordinary JSON errors. The 5 s device timeout covers only
+  connecting; an open stream has no time limit. When the browser closes
+  the stream, Node closes its device connection; the job itself carries on.
+
 | Browser route | Forwards to |
 |---|---|
 | `GET /api/health` | `/v1/health` |

@@ -10,8 +10,8 @@ own; the device is the source of truth.
 - Run: `npm start` (reads `.env`; see `.env.example`)
 - Node version pinned in `.nvmrc`
 - Tests: `npm test` (Node's built-in `node:test`; starts the real server
-  against a fake device, no `.env` needed; about 5 s because one test
-  waits out the real device timeout)
+  against a fake device, no `.env` needed; about 7 s because two tests
+  wait out real timeouts)
 
 ## Suggested layout
 ```
@@ -21,10 +21,13 @@ server/
   deviceClient.js   the ONLY module that calls the inference service;
                     adds X-Device-Token; maps connection failures to
                     DEVICE_OFFLINE
-  errors.js         sendError: any error -> contract error shape
+  errors.js         sendError, sendNotFound, and the final Express error
+                    handler (invalid JSON -> 400 BAD_REQUEST)
+  ids.js            isUuid: slide and job IDs are checked before any
+                    device URL is built
   routes/           health.js (/api/health); slides.js (/api/slides,
-                    .dzi and tile proxy, D-058); later /api/jobs and
-                    the SSE relay
+                    .dzi and tile proxy, D-058); jobs.js (/api/jobs and
+                    the SSE relay, D-060)
 client/
   index.html
   css/

@@ -36,13 +36,13 @@ test('req_108: no client file mentions the device API, token, or address', async
   }
 });
 
-test('req_108: only api.js calls fetch, and every API path starts with /api/', async () => {
+test('req_108: only api.js calls fetch, and every getJson/postJson path starts with /api/', async () => {
   for (const [name, text] of await clientFiles()) {
     if (!name.endsWith('.js')) continue;
     if (name !== join('js', 'api.js')) {
       assert.doesNotMatch(text, /\bfetch\(/, `${name} calls fetch directly`);
     }
-    for (const [, path] of text.matchAll(/getJson\(\s*["'`]([^"'`]*)/g)) {
+    for (const [, path] of text.matchAll(/(?:getJson|postJson)\(\s*["'`]([^"'`]*)/g)) {
       assert.ok(path.startsWith('/api/'), `${name} requests ${path}`);
     }
   }
@@ -57,4 +57,16 @@ test('req_108: the viewer opens slides only through /api/', async () => {
       assert.ok(url.startsWith('/api/'), `${name} opens ${url}`);
     }
   }
+});
+
+test('req_108: progress streams are opened only through /api/', async () => {
+  let streams = 0;
+  for (const [name, text] of await clientFiles()) {
+    if (!name.endsWith('.js')) continue;
+    for (const [, url] of text.matchAll(/new EventSource\(\s*["'`]([^"'`]*)/g)) {
+      streams += 1;
+      assert.ok(url.startsWith('/api/'), `${name} streams ${url}`);
+    }
+  }
+  assert.ok(streams > 0, 'expected at least one EventSource');
 });

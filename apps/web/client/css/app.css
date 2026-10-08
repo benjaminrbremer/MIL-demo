@@ -65,3 +65,5 @@ footer {
 .status-ready { color: #1a7f37; }
 .status-unreadable { color: #cf222e; }
 .muted { color: #59636e; }
+
+#job-progress { width: 100%; }

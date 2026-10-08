@@ -58,9 +58,10 @@ Each numbered item is one feature branch, squash-merged into `main`.
   Auto-refreshing list with statuses; OpenSeadragon viewer via tile proxy.
   REQ-101, REQ-102. `deviceGetRaw` proxy with a header allowlist;
   OpenSeadragon 6.1.1 from `node_modules`. D-058, D-059.
-- [ ] **10. `feat(web): run jobs with live progress`**
+- [x] **10. `feat(web): run jobs with live progress`**
   Start job; SSE relay; progress bar by stage and patch count; recovery on
-  browser refresh. REQ-103, REQ-104.
+  browser refresh. REQ-103, REQ-104. Streaming `pipeline` relay with a
+  connect-only timeout; `#slide=` recovery. D-060, D-061.
 - [ ] **11. `feat(web): add results panel, heatmap overlay, and error states`**
   Prediction, uncertainty flag, quality metrics, heatmap toggle and
   opacity, clear error display per code. REQ-105, REQ-106, REQ-017.
