@@ -88,7 +88,7 @@ export function showHeatmap(jobId, options) {
         success: (event) => {
             if (request !== heatmapRequest) {
                 // The user moved on while it loaded: OpenSeadragon has just
-                // added it ot whatever slide is open now, so take it out again
+                // added it to whatever slide is open now, so take it out again
                 viewer.world.removeItem(event.item);
                 return;
             }

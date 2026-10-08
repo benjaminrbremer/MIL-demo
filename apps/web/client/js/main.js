@@ -1,8 +1,7 @@
 import { getJson } from './api.js';
 import { startSlideList } from './slideList.js';
 import { showSlide } from './viewer.js';
-import { showJobFor } from "./progress.js";
-import { startProgress } from "./progress.js";
+import { showJobFor, startProgress } from "./progress.js";
 import { showResult } from "./results.js";
 import { messageFor } from "./messages.js";
 
@@ -42,4 +41,4 @@ startSlideList({
         showJobFor(slideId);
     },
 });
-startProgress({ onReuslt: showResult });
+startProgress({ onResult: showResult });

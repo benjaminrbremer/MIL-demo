@@ -3,17 +3,16 @@
  * controls (REQ-106). Decisions live in describe.js; this file only draws.
  */
 
-import { describeResult, percent } from "../describe.js";
-import { messageFor } from "./messages.js";
-import { clearHeatmap, setHeatmapOpacity, setHeatmapVisible, showHeatmap } from "./viewer,js";
+import { describeResult } from "./describe.js";
+import { clearHeatmap, setHeatmapOpacity, setHeatmapVisible, showHeatmap } from "./viewer.js";
 
 const panel = document.querySelector(".results-panel");
 const prediction = document.querySelector("#result-prediction");
 const probabilityList = document.querySelector("#result-probabilities");
 const warningBox = document.querySelector("#result-warnings");
-const resultMessage = document querySelector("#resule-message");
+const resultMessage = document.querySelector("#result-message");
 const metricList = document.querySelector("#result-metrics");
-const modelList = document.querySelector("result-models");
+const modelList = document.querySelector("#result-models");
 const controls = document.querySelector("#heatmap-controls");
 const visibleBox = document.querySelector("#heatmap-visible");
 const opacitySlider = document.querySelector("#heatmap-opacity");
@@ -33,9 +32,9 @@ function warning(text) {
 /** 
  * @param {Array<[string, string]>} pairs 
  */
-fucntion renderMetrics(pairs) {
-    metricList.repaceChildren(...pairs.flatMap(([label, value]) => {
-        const dt = document.reateElement("dt");
+function renderMetrics(pairs) {
+    metricList.replaceChildren(...pairs.flatMap(([label, value]) => {
+        const dt = document.createElement("dt");
         dt.textContent = label;
         const dd = document.createElement("dd");
         dd.textContent = value;
@@ -47,13 +46,13 @@ fucntion renderMetrics(pairs) {
  * @param {object} job  a completed job 
  */
 function renderModels(job) {
-    modelList.repaceChildren(...job.models.map((model) => {
+    modelList.replaceChildren(...job.models.map((model) => {
         const item = document.createElement("li");
         item.textContent = `${model.role}: ${model.name} @ ${model.version}`;
         return item;
     }));
     const seconds = Object.values(job.timings_s).reduce((sum, s) => sum + s, 0);
-    const total = documet.createElement("li");
+    const total = document.createElement("li");
     total.textContent = `Analysis time: ${seconds.toFixed(1)} s`;
     modelList.append(total);
 }
@@ -64,7 +63,7 @@ function renderModels(job) {
  */
 export function showResult(job) {
     if (job === null) {
-        panel.hiddel = true;
+        panel.hidden = true;
         clearHeatmap();
         return;
     }
@@ -73,7 +72,7 @@ export function showResult(job) {
 
     if (job.result === null) {
         // Completed by the early stub pipeline: there's nothing to show (D-036)
-        prediction.textContent = "No rsult recorded for this job";
+        prediction.textContent = "No result recorded for this job";
         probabilityList.replaceChildren();
         warningBox.replaceChildren();
         resultMessage.textContent = "Run the analysis again to get a result.";
@@ -98,7 +97,7 @@ export function showResult(job) {
     controls.disabled = false;
     showHeatmap(job.id, {
         onError: () => {
-            controls.disables = trye;
+            controls.disabled = true;
             heatmapMessage.textContent = view.checksMissing ? "This job has no heatmap (it finished before the feature existed)." : "The heatmap couldn't be loaded. Select the slide again to retry.";
         },
     });
@@ -106,4 +105,4 @@ export function showResult(job) {
 
 visibleBox.addEventListener("change", () => setHeatmapVisible(visibleBox.checked));
 // "input" fires continuously while dragging: "change" only on release
-opacitySlide.addEventListener("input", () => setHeatmapOpacity(opacitySlider.value / 100));
+opacitySlider.addEventListener("input", () => setHeatmapOpacity(opacitySlider.value / 100));

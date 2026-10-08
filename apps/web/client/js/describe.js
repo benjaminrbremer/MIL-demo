@@ -41,7 +41,7 @@ export function describeResult(result) {
     const warnings = [];
     if (result.uncertain === true) {
         const p = result.probabilities[result.predicted_class];
-        const [low, high] = result.uncertainty.band;
+        const [low, high] = result.uncertainty_band;
         warnings.push(
             `Uncertain result: the model gave ${percent(p)}, inside the uncertainty band ` + 
             `(${percent(low)} to ${percent(high)}). Treat this prediction as inconclusive.`,

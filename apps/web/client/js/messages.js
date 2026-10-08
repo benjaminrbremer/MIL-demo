@@ -37,6 +37,6 @@ export const MESSAGES = {
  */
 export function messageFor(error) {
     const code = error?.code ?? "UNKNOWN"
-    const text = MESSAGE[code] ?? error?.message ?? "An unexpected error occurred";
+    const text = MESSAGES[code] ?? error?.message ?? "An unexpected error occurred";
     return `${text} (${code})`;
 }

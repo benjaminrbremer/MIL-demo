@@ -89,6 +89,9 @@ function render() {
     } else {
         statusLine.textContent = `Analysis failed: ${job.error.message} (${job.error.code})`;
     }
+
+    // Tell the results panel what to show: the job if it's completed: otherwise nothing
+    onResult(job?.status === "completed" ? job : null);
 }
 
 function stopFollowing() {
@@ -189,3 +192,4 @@ startButton.addEventListener("click", async () => {
 });
 
 render();
+
