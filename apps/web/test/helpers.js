@@ -67,12 +67,23 @@ export const TILE_PATH = `/slides/${READY_ID}_files/8/0_0.jpeg`;
  *                                      not reach the browser
  *   /slides/<READY_ID>_files/99/0_0.jpeg 500 with a plain-text body
  *   /slides/<NOT_READY_ID>...          409 SLIDE_NOT_READY
- * @returns {Promise<{url: string, requests: Array<{url: string, headers: object}>, close: () => Promise<void>}>}
+ * A test can add its own routes with `handle(req, res, entry)`: it runs
+ * after the token check and returns true when it answered the request.
+ * Each recorded request has method, url, headers, body (text), and
+ * `closed`, which turns true when the client hangs up.
+ * @param {{handle?: (req: import('node:http').IncomingMessage,
+ *                    res: import('node:http').ServerResponse,
+ *                    entry: object) => boolean}} [options]
+ * @returns {Promise<{url: string, requests: Array<object>, close: () => Promise<void>}>}
  */
-export async function startFakeDevice() {
+export async function startFakeDevice({ handle } = {}) {
   const requests = [];
-  const server = createServer((req, res) => {
-    requests.push({ url: req.url, headers: req.headers });
+  const server = createServer(async (req, res) => {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    const entry = { method: req.method, url: req.url, headers: req.headers, body, closed: false };
+    res.on('close', () => (entry.closed = true));
+    requests.push(entry);
     const json = (status, body) => {
       res.writeHead(status, { 'content-type': 'application/json' });
       res.end(JSON.stringify(body));
@@ -81,6 +92,7 @@ export async function startFakeDevice() {
       json(401, { error: { code: 'UNAUTHORIZED', message: 'Missing or invalid device token' } });
       return;
     }
+    if (handle?.(req, res, entry)) return;
     switch (req.url) {
       case '/v1/health':
         json(200, HEALTH_BODY);
@@ -192,4 +204,40 @@ export function runWebServerToExit(env) {
       resolve({ code, output });
     });
   });
+}
+
+/** Wait until `condition()` is true; fail after `timeoutMs`. */
+export async function waitFor(condition, timeoutMs = 3000) {
+  const deadline = Date.now() + timeoutMs;
+  while (!condition()) {
+    if (Date.now() > deadline) throw new Error('condition not met in time');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+}
+
+/** One Server-Sent Event in the wire format: `event: <name>` and `data: <json>`. */
+export function sseEvent(name, data) {
+  return `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
+/**
+ * Read an SSE response body as text until `until(textSoFar)` is true or the
+ * stream ends. Returns the text and whether the stream had ended.
+ * @param {ReadableStreamDefaultReader<Uint8Array>} reader
+ * @param {(text: string) => boolean} [until]
+ */
+export async function readSse(reader, until = () => false) {
+  const decoder = new TextDecoder();
+  let text = '';
+  while (!until(text)) {
+    const { value, done } = await reader.read();
+    if (done) return { text, ended: true };
+    text += decoder.decode(value, { stream: true });
+  }
+  return { text, ended: false };
+}
+
+/** Event names in an SSE text, in order (comments like `: ping` are skipped). */
+export function sseEventNames(text) {
+  return [...text.matchAll(/^event: (\S+)$/gm)].map((match) => match[1]);
 }
