@@ -1,6 +1,6 @@
 [project]
 name = "mil-inference"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Device-style WSI analysis service: slide registry, tiles, MIL jobs. Research demo only, not for clinical use."
 requires-python = ">=3.12,<3.13"
 dependencies = [
