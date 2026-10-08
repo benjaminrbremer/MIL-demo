@@ -170,7 +170,9 @@ during the job's `rendering` stage.
 
 | Code | Where | Meaning | How to trigger on purpose |
 |---|---|---|---|
-| `DEVICE_OFFLINE` | Web only | Node cannot reach the inference service | Stop the Python service |
+| `DEVICE_OFFLINE` | Web only (503) | Node cannot reach the inference service, or it doesn't answer within 5 s (D-057) | Stop the Python service; for the timeout, point `INFERENCE_URL` at an unused tailnet address |
+| `BAD_GATEWAY` | Web only (502) | Something answered at `INFERENCE_URL`, but not with JSON (D-057) | Point `INFERENCE_URL` at a different web server |
+| `WEB_SERVER_OFFLINE` | Browser only, never sent by a server | The browser cannot reach the Node server, or got non-JSON from it | Stop the Node server, then reload |
 | `SLIDE_UNREADABLE` | Slide status / tiles / job | OpenSlide cannot open the file | Drop a renamed text file in the folder |
 | `NO_TISSUE` | Job | Segmentation found fewer than 16 patches of tissue (D-043) | Blank or background-only image |
 | `NO_RESOLUTION` | Job | The slide has no microns-per-pixel value, so 128 µm patches can't be sized (D-044) | A pyramidal TIFF written without resolution tags |
@@ -250,7 +252,11 @@ Under `DATA_DIR`, besides the SQLite database:
 ## Web app routes (Node)
 The browser calls only these. Node forwards to `/v1/...` with the token and
 returns `503 {"error": {"code": "DEVICE_OFFLINE"}}` when the device is
-unreachable.
+unreachable. Device errors pass through unchanged (same status, code and
+message); an error body without the contract shape becomes
+`INTERNAL_ERROR`. Unknown `/api/...` paths return `404 NOT_FOUND`, and an
+error in Node itself returns `500 INTERNAL_ERROR` with a fixed message
+(D-057).
 
 | Browser route | Forwards to |
 |---|---|

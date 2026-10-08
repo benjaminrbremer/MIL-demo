@@ -1,0 +1,30 @@
+<!-- The main page is written in plain HTML so that it displays even if every script fails (REQ-109) -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MIL slide analysis (research demo)</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header>
+    <h1>MIL slide analysis</h1>
+    <p class="notice">Research demo - not for clinical use</p>
+  </header>
+
+  <div id="offline-banner" class="banner" hidden></div>
+
+  <main>
+    <!-- Items 9-11 fill this in: slide list, viewer, progress, results. -->
+  </main>
+
+  <footer>
+    <h2>Models</h2>
+    <ul id="model-list"></ul>
+  </footer>
+
+  <!-- type="module" lets main.js use import/export; it also runs after the HTML is parsed. -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

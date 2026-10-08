@@ -9,6 +9,9 @@ own; the device is the source of truth.
 - Install: `npm install`
 - Run: `npm start` (reads `.env`; see `.env.example`)
 - Node version pinned in `.nvmrc`
+- Tests: `npm test` (Node's built-in `node:test`; starts the real server
+  against a fake device, no `.env` needed; about 5 s because one test
+  waits out the real device timeout)
 
 ## Suggested layout
 ```
@@ -18,6 +21,7 @@ server/
   deviceClient.js   the ONLY module that calls the inference service;
                     adds X-Device-Token; maps connection failures to
                     DEVICE_OFFLINE
+  errors.js         sendError: any error -> contract error shape
   routes/           /api/health, /api/slides, /api/jobs, tile proxy,
                     SSE relay
 client/
@@ -25,6 +29,9 @@ client/
   css/
   js/               ES modules: api.js, slideList.js, viewer.js,
                     progress.js, results.js
+test/
+  helpers.js        fake inference service; runs server/index.js
+  *.test.js         the tests; REQ IDs in test names (e.g. req_107)
 ```
 
 ## Rules

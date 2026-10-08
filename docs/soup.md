@@ -22,9 +22,9 @@ project's own license file before marking "Verified".
 | Uvicorn | 0.54.0 | inference | BSD-3-Clause | [ ] | uvicorn.org | ASGI server |
 | NumPy | 2.5.3 | inference | BSD-3-Clause | [ ] | numpy.org | Arrays for masks, patch coordinates, features, attention; `.npy` feature cache and job outputs |
 | Pillow | 12.3.0 | inference | MIT-CMU (HPND) | [ ] | python-pillow.org | Image objects returned by openslide-python; encoder input resize (bilinear, 224 px); JPEG tile encoding |
-| Express | TBD | web | MIT | [ ] | expressjs.com | HTTP server and routing |
+| Express | 5.2.1 | web | MIT | [ ] | expressjs.com | HTTP server and routing |
 | OpenSeadragon | TBD | web | BSD-3-Clause | [ ] | openseadragon.github.io | Deep Zoom slide viewer |
-| Node.js runtime | TBD | web | MIT | [ ] | nodejs.org | JavaScript runtime |
+| Node.js runtime | 24 LTS (`.nvmrc`); tests run on 24.21.0 | web | MIT | [ ] | nodejs.org | JavaScript runtime |
 | Python runtime | 3.12 (3.12.12 on dev Mac) | inference | PSF | [ ] | python.org | Python runtime |
 
 Add any transitive dependency that directly affects results (for example,
