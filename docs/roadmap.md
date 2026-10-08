@@ -62,9 +62,11 @@ Each numbered item is one feature branch, squash-merged into `main`.
   Start job; SSE relay; progress bar by stage and patch count; recovery on
   browser refresh. REQ-103, REQ-104. Streaming `pipeline` relay with a
   connect-only timeout; `#slide=` recovery. D-060, D-061.
-- [ ] **11. `feat(web): add results panel, heatmap overlay, and error states`**
+- [x] **11. `feat(web): add results panel, heatmap overlay, and error states`**
   Prediction, uncertainty flag, quality metrics, heatmap toggle and
   opacity, clear error display per code. REQ-105, REQ-106, REQ-017.
+  Pure `describe.js` and `messages.js`; `onResult` callback from the
+  progress panel; heatmap proxy and `addSimpleImage` overlay. D-062, D-063.
 
 ## Day 3 - documentation and release
 - [ ] **12. `docs: add architecture, SOUP, requirements, risk register, and traceability`**

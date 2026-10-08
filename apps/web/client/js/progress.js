@@ -6,6 +6,7 @@
  */
 
 import { getJson, postJson } from "./api.js";
+import { messageFor } from "./messages.js";
 
 const RETRY_MS = 3000;
 
@@ -85,9 +86,9 @@ function render() {
             : "Starting...";
         renderProgress();
     } else if (job.status === "completed") {
-        statusLine.textContent = "Analysis complete."       // Results panel added in a future effort
+        statusLine.textContent = "Analysis complete.";      // The results panel shows the rest
     } else {
-        statusLine.textContent = `Analysis failed: ${job.error.message} (${job.error.code})`;
+        statusLine.textContent = `Analysis failed: ${messageFor(job.error)}`;
     }
 
     // Tell the results panel what to show: the job if it's completed: otherwise nothing
@@ -160,7 +161,7 @@ export async function showJobFor(id) {
     loading = false;
     if (!ok) {
         render();
-        statusLine.textContent = `Can't load this slide's analysis: ${body.error.message}`;
+        statusLine.textContent = `Can't load this slide's analysis: ${messageFor(body.error)}`;
         return;
     }
     job = body[0] ?? null;      // Newest first (contract)
@@ -187,7 +188,7 @@ startButton.addEventListener("click", async () => {
         showJobFor(id);
     } else {
         render();
-        statusLine.textContent = `Can't start analysis: ${body.error.message}`;
+        statusLine.textContent = `Can't start analysis: ${messageFor(body.error)}`;
     }
 });
 

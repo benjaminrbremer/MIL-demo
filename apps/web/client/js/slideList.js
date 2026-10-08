@@ -4,6 +4,7 @@
  */
 
 import { getJson } from "./api.js";
+import { messageFor } from "./messages.js";
 
 const POLL_MS = 3000;
 
@@ -60,7 +61,7 @@ function renderSlide(slide) {
         parts.unshift(`${slide.width.toLocaleString()} x ${slide.height.toLocaleString()} px`);
     }
     if (slide.error) {
-        parts.push(slide.error.message);
+        parts.push(messageFor(slide.error));
     }
     details.textContent = parts.join("  -  ");
 
@@ -88,7 +89,7 @@ async function refresh() {
         // Keep showing the last list; the health banner explains the outage.
         status.textContent = lastJson 
             ? `Can't refresh the list (${body.error.code}). Showing the last known slides.` 
-            : `Can't load slides: ${body.error.message}`;
+            : `Can't load slides: ${messageFor(body.error)}`;
         return;
     }
 

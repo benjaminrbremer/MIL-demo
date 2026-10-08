@@ -51,13 +51,13 @@ export function describeResult(result) {
     const quality = result.quality;
     if (quality?.segmentation_suspect) {
         warnings.push(
-            `Check the segmentation tissue was found on ${percent(quality.tissue_fraction)} of the slide, ` + 
+            `Check the segmentation: tissue was found on ${percent(quality.tissue_fraction)} of the slide, ` + 
             "so background may have been analyzed as tissue. Look at the heatmap before relying on this result.",
         );
     }
 
     const metrics = quality === null ? [] : [
-        ["Tussue area", `${quality.tissue_area_mm2.toFixed(1)} mm^2`],
+        ["Tissue area", `${quality.tissue_area_mm2.toFixed(1)} mm^2`],
         ["Tissue fraction", percent(quality.tissue_fraction)],
         ["Patches analyzed", quality.patch_count.toLocaleString()],
         ["Blur", quality.blur_fraction === null ? "Not measured in this version" : percent(quality.blur_fraction)],
