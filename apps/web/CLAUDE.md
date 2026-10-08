@@ -25,14 +25,18 @@ server/
                     handler (invalid JSON -> 400 BAD_REQUEST)
   ids.js            isUuid: slide and job IDs are checked before any
                     device URL is built
+  raw.js            sendRaw: device bytes to the browser with only
+                    Content-Type and Cache-Control (D-058)
   routes/           health.js (/api/health); slides.js (/api/slides,
-                    .dzi and tile proxy, D-058); jobs.js (/api/jobs and
-                    the SSE relay, D-060)
+                    .dzi and tile proxy, D-058); jobs.js (/api/jobs,
+                    the SSE relay, D-060, and the heatmap proxy, D-063)
 client/
   index.html
   css/
-  js/               ES modules: api.js, slideList.js, viewer.js,
-                    progress.js, results.js
+  js/               ES modules: main.js, api.js, slideList.js,
+                    viewer.js (slide and heatmap overlay), progress.js,
+                    results.js; describe.js and messages.js have no DOM
+                    code, so tests import them directly (D-062)
   (OpenSeadragon: served from node_modules at /vendor/openseadragon/,
    loaded as a classic script before main.js; D-059)
 test/

@@ -70,3 +70,16 @@ test('req_108: progress streams are opened only through /api/', async () => {
   }
   assert.ok(streams > 0, 'expected at least one EventSource');
 });
+
+test('req_108: the heatmap overlay is loaded only through /api/', async () => {
+  // addSimpleImage({ url: ... }) makes OpenSeadragon fetch the PNG itself.
+  let images = 0;
+  for (const [name, text] of await clientFiles()) {
+    if (!name.endsWith('.js')) continue;
+    for (const [, url] of text.matchAll(/\burl:\s*["'`]([^"'`]*)/g)) {
+      images += 1;
+      assert.ok(url.startsWith('/api/'), `${name} loads ${url}`);
+    }
+  }
+  assert.ok(images > 0, 'expected the heatmap image URL');
+});

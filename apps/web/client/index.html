@@ -30,6 +30,37 @@
     <p id="job-detail" class="muted"></p>
   </section>
 
+  <section class="results-panel" aria-labelledby="results-heading" hidden>
+    <h2 id="results-heading">Results</h2>
+    <p class="muted">Model output for research use only. Not a diagnosis.</p>
+
+    <p id="result-prediction" class="prediction"></p>
+    <ul id="result-probabilities" class="probabilities"></ul>
+    <div id="result-warnings"></div>
+    <p id="result-message" class="muted"></p>
+
+    <h3>Sample quality</h3>
+    <dl id="result-metrics" class="metrics"></dl>
+
+    <fieldset id="heatmap-controls" class="heatmap-controls">
+      <legend>Attention heatmap</legend>
+      <label><input type="checkbox" id="heatmap-visible" checked> Show on slide</label>
+      <label for="heatmap-opacity">Opacity</label>
+      <input type="range" id="heatmap-opacity" min="0" max="100" value="50">
+      <div class="legend" aria-hidden="true">
+        <span>Low</span><span class="legend-ramp"></span><span>High</span>
+      </div>
+      <p class="muted">Where the model looked, relative to this slide only. Not a probability
+        of metastasis: a negative slide has red areas too.</p>
+      <p id="heatmap-message" class="muted"></p>
+    </fieldset>
+
+    <details>
+      <summary>Models and timings</summary>
+      <ul id="result-models"></ul>
+    </details>
+  </section>
+
   <section class="viewer-panel" aria-labelledby="viewer-heading">
     <h2 id="viewer-heading">Viewer</h2>
     <p id="viewer-message" class="muted">Select a ready slide to view it.</p>

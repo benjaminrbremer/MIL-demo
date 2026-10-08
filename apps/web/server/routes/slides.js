@@ -4,6 +4,7 @@
 import { Router } from "express";
 import {deviceGet, deviceGetRaw } from "../deviceClient.js";
 import { sendError } from "../errors.js";
+import { sendRaw } from "../raw.js";
 
 export const slidesRouter = Router();
 
@@ -20,19 +21,6 @@ slidesRouter.get("/api/slides", async (req, res) => {
         sendError(res, err);
     }
 });
-
-/**
- * Send device bytes to the browser with only the headers we allow.
- * @param {import('express').Response} res
- * @param {{contentType: string, cacheControl: string | null, body: Buffer}} raw
- */
-function sendRaw(res, raw) {
-    res.type(raw.contentType);
-    if (raw.cacheControl) {
-        res.set("Cache-Control", raw.cacheControl);
-    }
-    res.send(raw.body);
-}
 
 function notFound(res) {
     res.status(404).json({ error: { code: "NOT_FOUND" , message: "Not found" } });

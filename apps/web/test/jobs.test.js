@@ -1,7 +1,7 @@
 /**
- * Job routes and the SSE progress relay end to end (REQ-103, REQ-104,
- * REQ-107, REQ-108): the real server/index.js against a fake device whose
- * progress stream the tests control.
+ * Job routes, the SSE progress relay and the heatmap proxy end to end
+ * (REQ-103, REQ-104, REQ-106, REQ-107, REQ-108): the real server/index.js
+ * against a fake device whose progress stream the tests control.
  */
 
 import { test, before, after } from 'node:test';
@@ -22,6 +22,11 @@ const JOB_ID = 'aaaaaaaa-1111-4222-8333-444444444444';
 const LONG_JOB_ID = 'bbbbbbbb-1111-4222-8333-444444444444';
 const UNKNOWN_JOB_ID = 'cccccccc-1111-4222-8333-444444444444';
 const BUSY_SLIDE_ID = 'dddddddd-1111-4222-8333-444444444444';
+const RUNNING_JOB_ID = 'eeeeeeee-1111-4222-8333-444444444444';
+
+/** Not a real PNG: bytes a text decoder would mangle (the PNG signature, then non-UTF-8). */
+const HEATMAP_BYTES = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xff, 0xfe, 0x00]);
+const HEATMAP_CACHE_CONTROL = 'private, max-age=3600';
 
 /** A job object shaped like the contract's. */
 function jobObject(id, slideId, status, extra = {}) {
@@ -86,7 +91,20 @@ function handleJobs(req, res, entry) {
     res.on('close', () => clearTimeout(timer));
     return true;
   }
-  if (url.pathname === `/v1/jobs/${UNKNOWN_JOB_ID}/events`) {
+  if (url.pathname === `/v1/jobs/${JOB_ID}/heatmap.png`) {
+    res.writeHead(200, {
+      'content-type': 'image/png',
+      'cache-control': HEATMAP_CACHE_CONTROL,
+      'x-device-internal': 'must-not-be-forwarded',
+    });
+    res.end(HEATMAP_BYTES);
+    return true;
+  }
+  if (url.pathname === `/v1/jobs/${RUNNING_JOB_ID}/heatmap.png`) {
+    json(409, { error: { code: 'JOB_NOT_COMPLETED', message: 'Job is not completed' } });
+    return true;
+  }
+  if (url.pathname.startsWith(`/v1/jobs/${UNKNOWN_JOB_ID}/`)) {
     json(404, { error: { code: 'NOT_FOUND', message: 'Job not found' } });
     return true;
   }
@@ -253,6 +271,50 @@ test('a malformed job ID on the stream route is 404 and never reaches the device
   assert.equal(device.requests.length, before);
 });
 
+// ---- Heatmap proxy (REQ-106) ----
+
+test('req_106: the heatmap PNG is proxied byte for byte with its cache header', async () => {
+  const response = await fetch(`${web.url}/api/jobs/${JOB_ID}/heatmap.png`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('content-type'), 'image/png');
+  assert.equal(response.headers.get('cache-control'), HEATMAP_CACHE_CONTROL);
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), HEATMAP_BYTES);
+  const sent = device.requests.at(-1);
+  assert.equal(sent.url, `/v1/jobs/${JOB_ID}/heatmap.png`);
+  assert.equal(sent.headers['x-device-token'], TEST_TOKEN);
+});
+
+test('req_108: the heatmap response carries no other device headers', async () => {
+  const response = await fetch(`${web.url}/api/jobs/${JOB_ID}/heatmap.png`);
+
+  assert.equal(response.headers.get('x-device-internal'), null);
+  for (const [name, value] of response.headers) {
+    assert.ok(!value.includes(TEST_TOKEN), `token in response header ${name}`);
+  }
+});
+
+test('req_106: heatmap errors pass through: 409 JOB_NOT_COMPLETED and 404 NOT_FOUND', async () => {
+  const running = await fetch(`${web.url}/api/jobs/${RUNNING_JOB_ID}/heatmap.png`);
+  assert.equal(running.status, 409);
+  assert.equal((await running.json()).error.code, 'JOB_NOT_COMPLETED');
+
+  const unknown = await fetch(`${web.url}/api/jobs/${UNKNOWN_JOB_ID}/heatmap.png`);
+  assert.equal(unknown.status, 404);
+  assert.equal((await unknown.json()).error.code, 'NOT_FOUND');
+});
+
+test('a malformed job ID on the heatmap route is 404 and never reaches the device', async () => {
+  const before = device.requests.length;
+  for (const id of ['not-a-job', JOB_ID.toUpperCase(), '..%2F..%2Fhealth']) {
+    const response = await fetch(`${web.url}/api/jobs/${id}/heatmap.png`);
+
+    assert.equal(response.status, 404, id);
+    assert.equal((await response.json()).error.code, 'NOT_FOUND', id);
+  }
+  assert.equal(device.requests.length, before);
+});
+
 test('req_107: job routes are 503 DEVICE_OFFLINE when the device is down', async () => {
   const offline = await startWebServer({
     INFERENCE_URL: `http://127.0.0.1:${await freePort()}`,
@@ -266,6 +328,7 @@ test('req_107: job routes are 503 DEVICE_OFFLINE when the device is down', async
       }),
       fetch(`${offline.url}/api/jobs?slide_id=${READY_ID}`),
       fetch(`${offline.url}/api/jobs/${JOB_ID}/events`),
+      fetch(`${offline.url}/api/jobs/${JOB_ID}/heatmap.png`),
     ];
     for (const response of await Promise.all(requests)) {
       assert.equal(response.status, 503, response.url);

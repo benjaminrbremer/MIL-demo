@@ -1,7 +1,9 @@
 import { getJson } from './api.js';
 import { startSlideList } from './slideList.js';
 import { showSlide } from './viewer.js';
-import { showJobFor } from "./progress.js";
+import { showJobFor, startProgress } from "./progress.js";
+import { showResult } from "./results.js";
+import { messageFor } from "./messages.js";
 
 // Note how these line up with the divs in index.HTML
 const banner = document.querySelector("#offline-banner");
@@ -25,10 +27,7 @@ async function checkHealth() {
     const { ok, body } = await getJson("/api/health");
 
     if (!ok) {
-        showBanner(
-            body.error.code === "DEVICE_OFFLINE" 
-            ? "Analysis device offline. Check that the inference service is running." 
-            : `Error: ${body.error.message}`);
+        showBanner(messageFor(body.error));
         return;
     }
     banner.hidden = true;
@@ -42,3 +41,4 @@ startSlideList({
         showJobFor(slideId);
     },
 });
+startProgress({ onResult: showResult });

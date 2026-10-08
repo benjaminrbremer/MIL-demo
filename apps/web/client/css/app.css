@@ -67,3 +67,23 @@ footer {
 .muted { color: #59636e; }
 
 #job-progress { width: 100%; }
+
+.prediction { font-size: 1.25rem; font-weight: 600; }
+.metrics { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; }
+.metrics dt { color: #59636e; }
+.metrics dd { margin: 0; }
+.warning {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid #bc4c00;
+  background: #fff1e5;
+}
+.legend { display: flex; align-items: center; gap: 0.5rem; }
+/* OpenCV's TURBO map, sampled at 0, 0.1, ... 1 (the device colours the PNG with it, D-053) */
+.legend-ramp {
+  flex: 1;
+  height: 0.75rem;
+  background: linear-gradient(to right, #30123b, #455ccf, #3e9bfe, #19d5cd, #46f884,
+    #a4fc3c, #e1dd37, #fea732, #f05b12, #c32503, #7a0403);
+}
+

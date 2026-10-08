@@ -4,7 +4,8 @@
 import { Router } from "express";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { deviceGet, devicePost, deviceStream } from "../deviceClient.js";
+import { deviceGet, deviceGetRaw, devicePost, deviceStream } from "../deviceClient.js";
+import { sendRaw } from "../raw.js";
 import { sendError, sendNotFound } from "../errors.js"; 
 import { isUuid } from "../ids.js";
 
@@ -87,5 +88,20 @@ jobsRouter.get("/api/jobs/:id/events", async (req, res) => {
         // One side closed early (browser gone or device stopped)
         // Nothing to send since the headers already went out
         // No JSON error is possible
+    }
+});
+
+// The attention heatmap PNG of a completed job (REQ-106)
+jobsRouter.get("/api/jobs/:id/heatmap.png", async (req, res) => {
+    const { id } = req.params;
+    if (!isUuid(id)) {
+        sendNotFound(res);
+        return;
+    }
+
+    try {
+        sendRaw(res, await deviceGetRaw(`/jobs/${id}/heatmap.png`));
+    } catch (err) {
+        sendError(res, err);
     }
 });

@@ -278,6 +278,11 @@ Job routes (D-060):
   offline) are ordinary JSON errors. The 5 s device timeout covers only
   connecting; an open stream has no time limit. When the browser closes
   the stream, Node closes its device connection; the job itself carries on.
+- `GET /api/jobs/:id/heatmap.png` passes the PNG through unchanged and,
+  like the Deep Zoom routes, copies only `Content-Type` and
+  `Cache-Control`. `409 JOB_NOT_COMPLETED` and `404 NOT_FOUND` from the
+  device pass through; a malformed job ID is `404 NOT_FOUND` from Node
+  (D-063).
 
 | Browser route | Forwards to |
 |---|---|
