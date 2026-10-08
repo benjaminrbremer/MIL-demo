@@ -45,3 +45,23 @@ footer {
   color: #59636e;
   font-size: 0.9rem;
 }
+
+.viewer {
+  width: 100%;
+  height: 70vh;            /* 70% of the window height */
+  background: #000;
+  border: 1px solid #d0d7de;
+}
+
+.slide-list { list-style: none; padding: 0; }
+.slide-list button {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font: inherit;           /* buttons don't inherit fonts by default */
+}
+.slide-list button[aria-current="true"] { outline: 2px solid #0969da; }
+.status { font-weight: 600; }
+.status-ready { color: #1a7f37; }
+.status-unreadable { color: #cf222e; }
+.muted { color: #59636e; }

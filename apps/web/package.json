@@ -9,6 +9,7 @@
   },
   "type": "module",
   "dependencies": {
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "openseadragon": "^6.1.1"
   }
 }

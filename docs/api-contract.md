@@ -171,7 +171,7 @@ during the job's `rendering` stage.
 | Code | Where | Meaning | How to trigger on purpose |
 |---|---|---|---|
 | `DEVICE_OFFLINE` | Web only (503) | Node cannot reach the inference service, or it doesn't answer within 5 s (D-057) | Stop the Python service; for the timeout, point `INFERENCE_URL` at an unused tailnet address |
-| `BAD_GATEWAY` | Web only (502) | Something answered at `INFERENCE_URL`, but not with JSON (D-057) | Point `INFERENCE_URL` at a different web server |
+| `BAD_GATEWAY` | Web only (502) | Something answered at `INFERENCE_URL` with a success status, but not with JSON (D-057) | Point `INFERENCE_URL` at a different web server |
 | `WEB_SERVER_OFFLINE` | Browser only, never sent by a server | The browser cannot reach the Node server, or got non-JSON from it | Stop the Node server, then reload |
 | `SLIDE_UNREADABLE` | Slide status / tiles / job | OpenSlide cannot open the file | Drop a renamed text file in the folder |
 | `NO_TISSUE` | Job | Segmentation found fewer than 16 patches of tissue (D-043) | Blank or background-only image |
@@ -253,10 +253,16 @@ Under `DATA_DIR`, besides the SQLite database:
 The browser calls only these. Node forwards to `/v1/...` with the token and
 returns `503 {"error": {"code": "DEVICE_OFFLINE"}}` when the device is
 unreachable. Device errors pass through unchanged (same status, code and
-message); an error body without the contract shape becomes
-`INTERNAL_ERROR`. Unknown `/api/...` paths return `404 NOT_FOUND`, and an
-error in Node itself returns `500 INTERNAL_ERROR` with a fixed message
-(D-057).
+message); an error body without the contract shape, or one that isn't
+JSON, becomes `INTERNAL_ERROR` with the device's status. Unknown
+`/api/...` paths return `404 NOT_FOUND`, and an error in Node itself
+returns `500 INTERNAL_ERROR` with a fixed message (D-057).
+
+The Deep Zoom routes pass the device's body through unchanged and copy only
+its `Content-Type` and `Cache-Control` headers. A slide ID that isn't a
+lowercase UUID, or a tile path that isn't `{level}/{col}_{row}.jpeg` with
+numbers, is answered `404 NOT_FOUND` by Node without contacting the device
+(D-058).
 
 | Browser route | Forwards to |
 |---|---|

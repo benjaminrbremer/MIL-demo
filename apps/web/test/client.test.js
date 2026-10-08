@@ -47,3 +47,14 @@ test('req_108: only api.js calls fetch, and every API path starts with /api/', a
     }
   }
 });
+
+test('req_108: the viewer opens slides only through /api/', async () => {
+  // OpenSeadragon makes its own requests, starting from the URL given to
+  // open(); its tile URLs are derived from that one.
+  for (const [name, text] of await clientFiles()) {
+    if (!name.endsWith('.js')) continue;
+    for (const [, url] of text.matchAll(/\.open\(\s*["'`]([^"'`]*)/g)) {
+      assert.ok(url.startsWith('/api/'), `${name} opens ${url}`);
+    }
+  }
+});

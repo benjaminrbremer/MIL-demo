@@ -9,14 +9,24 @@
 
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { HEALTH_BODY, TEST_TOKEN, startFakeDevice } from './helpers.js';
+import {
+  DZI_XML,
+  HEALTH_BODY,
+  NOT_READY_ID,
+  READY_ID,
+  TEST_TOKEN,
+  TILE_BYTES,
+  TILE_CACHE_CONTROL,
+  TILE_PATH,
+  startFakeDevice,
+} from './helpers.js';
 
 const device = await startFakeDevice();
 process.env.INFERENCE_URL = `${device.url}/`; // trailing slash: config strips it
 process.env.DEVICE_TOKEN = TEST_TOKEN;
 after(() => device.close());
 
-const { deviceGet, DeviceError } = await import('../server/deviceClient.js');
+const { deviceGet, deviceGetRaw, DeviceError } = await import('../server/deviceClient.js');
 
 /** Await a promise that should reject with a DeviceError; return the error. */
 async function deviceErrorFrom(promise) {
@@ -53,7 +63,7 @@ test('an error body without the contract shape becomes INTERNAL_ERROR', async ()
   assert.equal(err.code, 'INTERNAL_ERROR');
 });
 
-test('a non-JSON answer is BAD_GATEWAY (502)', async () => {
+test('a successful non-JSON answer is BAD_GATEWAY (502)', async () => {
   const err = await deviceErrorFrom(deviceGet('/not-json'));
 
   assert.equal(err.status, 502);
@@ -69,4 +79,40 @@ test('req_107: a device that never answers is DEVICE_OFFLINE after the timeout',
   assert.equal(err.code, 'DEVICE_OFFLINE');
   const elapsed = Date.now() - started;
   assert.ok(elapsed >= 4500 && elapsed < 8000, `took ${elapsed} ms`);
+});
+
+test('req_102: deviceGetRaw returns the bytes, content type, and cache header', async () => {
+  const raw = await deviceGetRaw(TILE_PATH);
+
+  assert.equal(raw.contentType, 'image/jpeg');
+  assert.equal(raw.cacheControl, TILE_CACHE_CONTROL);
+  assert.ok(Buffer.isBuffer(raw.body));
+  assert.deepEqual(raw.body, TILE_BYTES); // byte for byte, not decoded as text
+  assert.equal(device.requests.at(-1).headers['x-device-token'], TEST_TOKEN);
+});
+
+test('deviceGetRaw returns text bodies too, with no cache header', async () => {
+  const raw = await deviceGetRaw(`/slides/${READY_ID}.dzi`);
+
+  assert.equal(raw.contentType, 'application/xml');
+  assert.equal(raw.cacheControl, null);
+  assert.equal(raw.body.toString('utf8'), DZI_XML);
+});
+
+test('deviceGetRaw passes contract errors through', async () => {
+  const err = await deviceErrorFrom(deviceGetRaw(`/slides/${NOT_READY_ID}.dzi`));
+
+  assert.equal(err.status, 409);
+  assert.equal(err.code, 'SLIDE_NOT_READY');
+  assert.equal(err.message, 'Slide is not ready');
+});
+
+test('a failed answer that is not JSON keeps its status as INTERNAL_ERROR (D-057)', async () => {
+  // deviceGet and deviceGetRaw share this path (errorFrom).
+  for (const call of [deviceGet, deviceGetRaw]) {
+    const err = await deviceErrorFrom(call(`/slides/${READY_ID}_files/99/0_0.jpeg`));
+
+    assert.equal(err.status, 500);
+    assert.equal(err.code, 'INTERNAL_ERROR');
+  }
 });
