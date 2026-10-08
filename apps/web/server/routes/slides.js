@@ -1,7 +1,7 @@
 // server/routes/slides.js
 // Slide list (REQ-101) and the Deep Zoom proxy for the viewer (REQ-102)
 
-import { Router } from "Express";
+import { Router } from "express";
 import {deviceGet, deviceGetRaw } from "../deviceClient.js";
 import { sendError } from "../errors.js";
 
@@ -39,7 +39,7 @@ function notFound(res) {
 }
 
 // Gets the Deep Zoom XML descriptor
-slidesRouter.get("/api.slides/:id.dzi", async (req, res) => {
+slidesRouter.get("/api/slides/:id.dzi", async (req, res) => {
     const { id } = req.params;
     if (!SLIDE_ID.test(id)) {
         // We don't want to forward an unvalidated ID to the device

@@ -59,7 +59,7 @@ export async function deviceGetRaw(path) {
     return {
         contentType: response.headers.get("content-type") ?? "application/octet-stream",
         cacheControl: response.headers.get("cache-control"),
-        body: Buffer.from(await response.arrayBugger()),
+        body: Buffer.from(await response.arrayBuffer()),
     };
 }
 
