@@ -69,9 +69,12 @@ Each numbered item is one feature branch, squash-merged into `main`.
   progress panel; heatmap proxy and `addSimpleImage` overlay. D-062, D-063.
 
 ## Day 3 - documentation and release
-- [ ] **12. `docs: add architecture, SOUP, requirements, risk register, and traceability`**
+- [x] **12. `docs: add architecture, SOUP, requirements, risk register, and traceability`**
   Fill `docs/architecture.md`, finish `docs/soup.md` (versions from lock
   files), traceability column in `docs/requirements.md`, risk register.
+  Licences checked against installed packages; transitive appendix;
+  traceability by test file and manual checks; 15 risks with scores and
+  acceptability rule. D-064.
 - [ ] **13. Release**
   Bump versions, tag `inference-v0.1.0` and `web-v0.1.0`.
 - [ ] Rehearsal over Tailscale from the interview location: full live run,

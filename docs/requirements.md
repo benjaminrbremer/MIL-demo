@@ -1,8 +1,17 @@
 # Requirements - v0.1
 
-Draft. Edit freely; every requirement should map to real code and, where
-practical, a test that references its ID. "Verified by" is filled in as
-tests are written (roadmap item 12).
+Every requirement maps to code and, where practical, to tests that carry
+its ID in their name (`test_req_004_...` in Python, `req_004: ...` in
+JavaScript). "Verified by" lists those tests; `*` stands for every test in
+that file whose name starts with the prefix. What only a browser can show
+is checked by hand and marked "manual check", with the date where one was
+recorded.
+
+Run the tests with `uv run pytest` in `services/inference/` and `npm test`
+in `apps/web/`. Paths in the first table are relative to
+`services/inference/`.
+
+Risk controls in `docs/risk-register.md` point at these IDs.
 
 ## Inference service (device)
 
@@ -15,9 +24,9 @@ tests are written (roadmap item 12).
 | REQ-005 | The service shall serve only allowlisted slide metadata (dimensions, level count, microns per pixel). | `tests/test_registry.py::test_req_005_*`, `tests/test_slides.py::test_req_005_*` |
 | REQ-006 | The service shall not include original filenames or file paths in API responses or logs. | `tests/test_registry.py::test_req_006_*`, `tests/test_slides.py::test_req_006_*`, `tests/test_errors.py::test_req_006_*`, `tests/test_tiles.py::test_req_006_*`, `tests/test_heatmap.py::test_req_006_*` |
 | REQ-007 | The service shall serve ready slides as Deep Zoom tiles. | `tests/test_tiles.py::test_req_007_*` |
-| REQ-008 | The service shall run at most one analysis job at a time and queue others in FIFO order. || `tests/test_jobs.py::test_req_008_*` |
-| REQ-009 | The service shall persist job state in SQLite and, on startup, mark jobs left queued or running as failed with `INTERRUPTED`. || `tests/test_jobs.py::test_req_009_*`, `tests/test_jobs_api.py::test_req_009_*` |
-| REQ-010 | The service shall report job progress by stage and, during feature extraction, by patches processed of total. || `tests/test_jobs.py::test_req_010_*`, `tests/test_jobs_api.py::test_req_010_*` | | `tests/test_jobs.py::test_req_010_*`, `tests/test_jobs_api.py::test_req_010_*`, `tests/test_mil_pipeline.py::test_req_010_*` |
+| REQ-008 | The service shall run at most one analysis job at a time and queue others in FIFO order. | `tests/test_jobs.py::test_req_008_*` |
+| REQ-009 | The service shall persist job state in SQLite and, on startup, mark jobs left queued or running as failed with `INTERRUPTED`. | `tests/test_jobs.py::test_req_009_*`, `tests/test_jobs_api.py::test_req_009_*` |
+| REQ-010 | The service shall report job progress by stage and, during feature extraction, by patches processed of total. | `tests/test_jobs.py::test_req_010_*`, `tests/test_jobs_api.py::test_req_010_*`, `tests/test_mil_pipeline.py::test_req_010_*` |
 | REQ-011 | The service shall produce slide-level class probabilities and a predicted class using the pinned MIL model. | `tests/test_mil_pipeline.py::test_req_011_*` |
 | REQ-012 | The service shall flag a result as uncertain when the predicted-class probability lies within [0.3, 0.7]. | `tests/test_quality.py::test_req_012_*`, `tests/test_mil_pipeline.py::test_req_012_*` |
 | REQ-013 | The service shall report tissue area in mm², tissue fraction, and usable patch count. Jobs on slides without microns per pixel fail with `NO_RESOLUTION` (D-044). | `tests/test_quality.py::test_req_013_*`, `tests/test_mil_pipeline.py::test_req_012_req_013_*` |
@@ -43,3 +52,60 @@ tests are written (roadmap item 12).
 | REQ-107 | The web app shall display a device-offline state when the inference service is unreachable. | `apps/web/test/deviceClient.test.js`, `apps/web/test/server.test.js`, `apps/web/test/slides.test.js`, `apps/web/test/jobs.test.js` and `apps/web/test/messages.test.js` (`req_107`); banner shown in the browser: manual check |
 | REQ-108 | The browser client shall communicate only with the web server, never directly with the inference service. | `apps/web/test/client.test.js`, `apps/web/test/deviceClient.test.js`, `apps/web/test/server.test.js`, `apps/web/test/slides.test.js` and `apps/web/test/jobs.test.js` (`req_108`) |
 | REQ-109 | The web app shall display a "research demo, not for clinical use" notice and the model versions in use. | `apps/web/test/server.test.js` (`req_109`, notice); model versions shown in the browser: manual check |
+
+## Traceability by test file
+
+The same mapping, from the other direction. Files without requirement IDs
+test supporting code that no single requirement covers.
+
+### Inference service (`services/inference/tests/`)
+| Test file | Requirements |
+|---|---|
+| `test_auth.py` | REQ-019 |
+| `test_config.py` | (none: config loading and validation, D-022) |
+| `test_errors.py` | REQ-006 |
+| `test_fetch_models.py` | REQ-016 |
+| `test_health.py` | REQ-018 |
+| `test_heatmap.py` | REQ-006, REQ-014 |
+| `test_jobs.py` | REQ-008, REQ-009, REQ-010, REQ-017 |
+| `test_jobs_api.py` | REQ-009, REQ-010, REQ-014, REQ-017 |
+| `test_mil_pipeline.py` | REQ-010, REQ-011, REQ-012, REQ-013, REQ-014, REQ-015, REQ-017, REQ-020 |
+| `test_models.py` | REQ-016, REQ-018, REQ-020 |
+| `test_quality.py` | REQ-012, REQ-013, REQ-021 |
+| `test_registry.py` | REQ-001, REQ-002, REQ-003, REQ-004, REQ-005, REQ-006 |
+| `test_segment_patch.py` | (none: tissue segmentation and the patch grid, D-039, D-051) |
+| `test_slides.py` | REQ-005, REQ-006, REQ-019 |
+| `test_tiles.py` | REQ-004, REQ-006, REQ-007, REQ-019 |
+| `test_version.py` | (none: `app.__version__` matches `pyproject.toml`) |
+
+Tests marked `models` or `slide` (part of REQ-007, REQ-020) are skipped
+unless the real weights and `MIL_TEST_SLIDE` are present; they run on the
+desktop GPU (D-048).
+
+### Web app (`apps/web/test/`)
+| Test file | Requirements |
+|---|---|
+| `client.test.js` | REQ-108 |
+| `describe.test.js` | REQ-105 |
+| `deviceClient.test.js` | REQ-102, REQ-107, REQ-108 |
+| `errors.test.js` | (none: Node's error handler keeps device errors and hides its own, D-057) |
+| `jobs.test.js` | REQ-103, REQ-104, REQ-106, REQ-107, REQ-108 |
+| `messages.test.js` | REQ-017, REQ-107 |
+| `server.test.js` | REQ-107, REQ-108, REQ-109 |
+| `slides.test.js` | REQ-101, REQ-102, REQ-107, REQ-108 |
+
+## Manual checks
+Browser behaviour that automated tests don't cover. Repeat these at the
+release rehearsal (roadmap item 13).
+
+| Requirement | Check |
+|---|---|
+| REQ-101 | A slide copied into the acquisition folder appears in the list within a few seconds, as arriving and then ready, without reloading |
+| REQ-102 | Selecting a ready slide opens it in the viewer; zoom to full resolution |
+| REQ-103 | Start analysis of a ready slide from the UI |
+| REQ-104 | Progress moves through the five stages with a patch count during feature extraction; reload mid-job and progress continues |
+| REQ-105 | A completed job shows the prediction, probabilities, warnings and metrics |
+| REQ-106 | The heatmap lines up with the tissue; hide, show and change its opacity |
+| REQ-107 | Stop the inference service: the page shows the device as offline (banner on load, list status line while open) |
+| REQ-109 | The research notice and both model versions are visible |
+| REQ-017 | Trigger each error code that can be triggered on purpose (see the contract's error table) and read its message |
