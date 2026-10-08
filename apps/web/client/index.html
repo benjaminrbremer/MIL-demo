@@ -16,14 +16,28 @@
   <div id="offline-banner" class="banner" hidden></div>
 
   <main>
-    <!-- Items 9-11 fill this in: slide list, viewer, progress, results. -->
-  </main>
+  <section class="slides" aria-labelledby="slides-heading">
+    <h2 id="slides-heading">Slides</h2>
+    <p id="slide-list-status" class="muted" aria-live="polite"></p>
+    <ul id="slide-list" class="slide-list"></ul>
+  </section>
+
+  <section class="viewer-panel" aria-labelledby="viewer-heading">
+    <h2 id="viewer-heading">Viewer</h2>
+    <p id="viewer-message" class="muted">Select a ready slide to view it.</p>
+    <div id="viewer" class="viewer" hidden></div>
+  </section>
+</main>
 
   <footer>
     <h2>Models</h2>
     <ul id="model-list"></ul>
   </footer>
 
+  <!-- OpenSeadragon is a classic script: it defines a global `OpenSeadragon`.
+       It must load before main.js, which uses that global. -->
+  <script src="/vendor/openseadragon/openseadragon.min.js"></script>
+  <script type="module" src="js/main.js"></script>
   <!-- type="module" lets main.js use import/export; it also runs after the HTML is parsed. -->
   <script type="module" src="js/main.js"></script>
 </body>

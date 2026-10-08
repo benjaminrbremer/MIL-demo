@@ -32,34 +32,69 @@ export class DeviceError extends Error {
  * @throws {DeviceError}
  */
 export async function deviceGet(path) {
-    let response;
+    const response = await deviceFetch(path);
+    if (!response.ok) {
+        throw await errorFrom(response);
+    }
+
     try {
-        response = await fetch(`${config.inferenceUrl}/v1${path}`, {
+        return await response.json();
+    } catch {
+        throw new DeviceError(502, "BAD_GATEWAY", "The analysis device sent an invalid response");
+    }
+}
+
+/**
+ * GET a non-JSON endpoint on the device (Deep Zoom XML, JPEG tiles, later the heatmap PNG).
+ * @param {string} path
+ * @returns {Promise<{contentType: string, cacheControl: string | null, body: Buffer}>}
+ * @throws {DeviceError}
+ */
+export async function deviceGetRaw(path) {
+    const response = await deviceFetch(path);
+
+    if (!response.ok) {
+        throw await errorFrom(response);
+    }
+    return {
+        contentType: response.headers.get("content-type") ?? "application/octet-stream",
+        cacheControl: response.headers.get("cache-control"),
+        body: Buffer.from(await response.arrayBugger()),
+    };
+}
+
+/**
+ * Fetch from the device with the token and a timeout.
+ * @param {string} path  e.g. "/slides" (without the /v1 prefix)
+ * @returns {Promise<Response>} the raw response, whatever its status
+ * @throws {DeviceError} DEVICE_OFFLINE if there is no response at all
+ */
+async function deviceFetch(path) {
+    try {
+        return await fetch(`${config.inferenceUrl}/v1${path}`, {
             headers: { "X-Device-Token": config.deviceToken },
-            // Without a timeout, a half-dead network can hang a request for minutes
             signal: AbortSignal.timeout(TIMEOUT_MS),
         });
     } catch {
-        // We get here if there's no response at all
         throw new DeviceError(503, "DEVICE_OFFLINE", "The analysis device is not reachable");
     }
+}
 
-    let body;
+/**
+ * Turn a non-OK device response into a DeviceError. The device uses the
+ * contract's error shape, so pass its code and message through.
+ * @param {Response} response
+ * @returns {Promise<DeviceError>}
+ */
+async function errorFrom(response) {
+    let body = null;
     try {
         body = await response.json();
     } catch {
-        // Something answered, but the result wasn't JSON (likely wrong service on that port)
-        throw new DeviceError(502, "BAD_GATEWAY", "The analysis device sent an invalid response");
+        // Not JSON, fall through to defaults below
     }
 
-    if (!response.ok) {
-        // The device already uses the error shape defined in the contract
-        // We want to pass it through so the UI can show a specific message per code
-        const code = body?.error?.code ?? "INTERNAL_ERROR";
-        const message = body?.error?.message ?? "The analysis device reported an error";
-        throw new DeviceError(response.status, code, message);
-    }
-
-    // Everything went well, we can return the JSON body of the GET
-    return body;
+    const code = body?.error?.code ?? "INTERNAL_ERROR";
+    const message = body?.error?.message ?? "The analysis device reported an error";
+    return new DeviceError(response.status, code, message);
 }
