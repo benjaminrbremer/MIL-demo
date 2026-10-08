@@ -20,3 +20,27 @@ export async function getJson(path) {
         };
     }
 }
+
+/**
+ * POST JSON to the web server. Never throws, like getJson.
+ * @param {string} path  e.g. "/api/jobs"
+ * @param {object} data  sent as the JSON body
+ * @returns {Promise<{ok: boolean, status: number, body: any}>}
+ */
+export async function postJson(path, data) {
+    try {
+        const response = await fetch(path, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
+        const body = await response.json();
+        return { ok: response.ok, status: response.status, body };
+    } catch {
+        return {
+            ok: false,
+            status: 0,
+            body: { error: {code: "WEB_SERVER_OFFLINE", message: "The web server is not reachable" } },
+        };
+    }
+}

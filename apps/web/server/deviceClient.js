@@ -66,12 +66,14 @@ export async function deviceGetRaw(path) {
 /**
  * Fetch from the device with the token and a timeout.
  * @param {string} path  e.g. "/slides" (without the /v1 prefix)
+ * @param {RequestInit} [init]  extra fetch options, e.g. method and body
  * @returns {Promise<Response>} the raw response, whatever its status
  * @throws {DeviceError} DEVICE_OFFLINE if there is no response at all
  */
-async function deviceFetch(path) {
+async function deviceFetch(path, init = {}) {
     try {
         return await fetch(`${config.inferenceUrl}/v1${path}`, {
+            ...init,
             headers: { "X-Device-Token": config.deviceToken },
             signal: AbortSignal.timeout(TIMEOUT_MS),
         });
@@ -97,4 +99,60 @@ async function errorFrom(response) {
     const code = body?.error?.code ?? "INTERNAL_ERROR";
     const message = body?.error?.message ?? "The analysis device reported an error";
     return new DeviceError(response.status, code, message);
+}
+
+/**
+ * POST JSON to the device and return its JSON answer.
+ * @param {string} path  e.g. "/jobs"
+ * @param {object} data  sent as the JSON body
+ * @returns {Promise<any>} the parsed JSON body
+ * @throws {DeviceError}
+ */
+export async function devicePost(path, data) {
+    const response = await deviceFetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application.json" },
+        body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        throw await errorFrom(response);
+    }
+
+    try {
+        return await response.json();
+    } catch {
+        throw new DeviceError(502, "BAD_GATEWAY", "The analysis device sent an invalid response");
+    }
+}
+
+/**
+ * Open a streaming endpoint on the device (the SSE progress stream).
+ * The 5 s timeout covers only getting the response headers: an open
+ * stream may run for minutes.
+ * @param {string} path  e.g. "/jobs/<id>/events"
+ * @returns {Promise<ReadableStream<Uint8Array>>} the response body, still streaming
+ * @throws {DeviceError} DEVICE_OFFLINE, or the device's own error (e.g. 404)
+ */
+export async function deviceStream(path) {
+    const controller = new AbortController();
+    const timer = settimeout(() => controller.abort(), TIMEOUT_MS);
+    let response;
+
+    try {
+        response = await fetch(`${config.inferenceUrl}/v1${path}`, {
+            headers: { "X-Device-Token": config.deviceToken },
+            signal: controller.signal,
+        });
+    } catch {
+        throw new DeviceError(503, "DEVICE_OFFLINE", "The analysis device is not reachable");
+    } finally {
+        clearTimeout(timer);        // Whether connected or failed, the stream itself has no time limit
+    }
+
+    if (!response.ok) {
+        throw await errorFrom(response);
+    }
+
+    return response.body;
 }

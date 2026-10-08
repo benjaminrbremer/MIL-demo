@@ -1,6 +1,7 @@
 import { getJson } from './api.js';
 import { startSlideList } from './slideList.js';
 import { showSlide } from './viewer.js';
+import { showJobFor } from "./progress.js";
 
 // Note how these line up with the divs in index.HTML
 const banner = document.querySelector("#offline-banner");
@@ -35,4 +36,9 @@ async function checkHealth() {
 }
 
 checkHealth();
-startSlideList({ onSelect: showSlide });
+startSlideList({ 
+    onSelect: (slideId) => {
+        showSlide(slideId);
+        showJobFor(slideId);
+    },
+});

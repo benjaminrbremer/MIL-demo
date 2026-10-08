@@ -10,8 +10,16 @@ const POLL_MS = 3000;
 const list = document.querySelector("#slide-list");
 const status = document.querySelector("#slide-list-status");
 
-let selectedId = null;
-let lastJson = null;    // The last list we rendered, as a string
+/** 
+ * The slide ID saved in the URL (#slide=<id>), or null. 
+ */
+function slideFromURL() {
+    return new URLSearchParams(location.hash.slice(1)).get("slide");
+}
+
+let selectedId = slideFromUrl;      // Restored after a reload (REQ-104)
+let restored = false;               // has the restored selection been checked yet?
+let lastJson = null;                // The last list we rendered, as a string
 let onSelect = () => {};
 
 const STATUS_TEXT = {
@@ -91,7 +99,15 @@ async function refresh() {
 
     // If JSON changed, re-render body and update lastJson
     lastJson = json;
+    const restoring = !restored;
+    if (restoring) {
+        restored = true;
+        // Only reopen it if it's still a ready slide on the device
+        const slide = body.find((s) => s.id === selectedId);
+        if (slide?.status !== "ready") selectedId = null;
+    }
     render(body);
+    if (restoring && selectedId) onSelect(selectedId);
 }
 
 async function pollLoop() {
@@ -107,6 +123,9 @@ list.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-slide-id]");
     if (!button || button.disabled) return;
     selectedId = button.dataset.slideId;
+
+    // replaceState, not location.hash = ...: no back-button entry per clock
+    history.replaceState(null, "", `#slide=${selectedId}`);
 
     // Re-render from the last data to move the highlight when something new is selected
     render(JSON.parse(lastJson));

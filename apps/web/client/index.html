@@ -22,6 +22,14 @@
     <ul id="slide-list" class="slide-list"></ul>
   </section>
 
+  <section class="job-panel" aria-labelledby="job-heading">
+    <h2 id="job-heading">Analysis</h2>
+    <button type="button" id="start-analysis" disabled>Start analysis</button>
+    <p id="job-status" aria-live="polite"></p>
+    <progress id="job-progress" aria-label="Analysis progress" hidden></progress>
+    <p id="job-detail" class="muted"></p>
+  </section>
+
   <section class="viewer-panel" aria-labelledby="viewer-heading">
     <h2 id="viewer-heading">Viewer</h2>
     <p id="viewer-message" class="muted">Select a ready slide to view it.</p>
