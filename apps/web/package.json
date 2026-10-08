@@ -1,0 +1,14 @@
+{
+  "name": "mil-demo-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A basic MIL web app for tissue samples",
+  "scripts": {
+    "start": "node --env-file=.env server/index.js",
+    "test": "node --test"
+  },
+  "type": "module",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
